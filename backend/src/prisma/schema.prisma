@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./node_modules/@prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String      @id @default(uuid())
+  email       String      @unique
+  name        String?
+  role        Role        @default(BENEFACTEE)
+  bills       Bill[]
+  requests    Request[]   @relation("RequestedBy")
+  supports    Request[]   @relation("SupportedBy")
+  wallet      Wallet?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+enum Role {
+  BENEFACTOR
+  BENEFACTEE
+}
+
+model Provider {
+  id          String      @id @default(uuid())
+  name        String
+  verified    Boolean     @default(false)
+  bills       Bill[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Bill {
+  id            String       @id @default(uuid())
+  description   String
+  amount        Float
+  status        BillStatus   @default(PENDING)
+  category      String?
+  dueDate       DateTime?
+  paymentMethod String?
+  userId        String
+  providerId    String?
+  requestId     String?
+  user          User         @relation(fields: [userId], references: [id])
+  provider      Provider?    @relation(fields: [providerId], references: [id])
+  request       Request?     @relation(fields: [requestId], references: [id])
+  transactions  Transaction[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+enum BillStatus {
+  PENDING
+  APPROVED
+  FAILED
+  PAID
+}
+
+model Request {
+  id          String      @id @default(uuid())
+  notes       String?
+  priority    String?
+  requesterId String
+  supporterId String
+  bills       Bill[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  requester   User        @relation("RequestedBy", fields: [requesterId], references: [id])
+  supporter   User        @relation("SupportedBy", fields: [supporterId], references: [id])
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  balance   Float    @default(0)
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  amount      Float
+  status      String   @default("PENDING")
+  billId      String
+  reference   String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bill        Bill     @relation(fields: [billId], references: [id])
+}
