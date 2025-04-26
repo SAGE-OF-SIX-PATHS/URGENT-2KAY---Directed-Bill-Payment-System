@@ -1,11 +1,17 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const common_1 = require("@nestjs/common");
-const core_1 = require("@nestjs/core");
-const app_module_1 = require("./modules/app.module");
-async function bootstrap() {
-    const app = await core_1.NestFactory.create(app_module_1.AppModule);
-    app.useGlobalPipes(new common_1.ValidationPipe());
-    await app.listen(3000);
-}
-bootstrap();
+const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
+const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
+const app = (0, express_1.default)();
+app.use((0, cors_1.default)());
+app.use(express_1.default.json());
+app.use("/auth", auth_routes_1.default);
+app.listen(5000, () => {
+    console.log("Server running on http://localhost:5000");
+});
