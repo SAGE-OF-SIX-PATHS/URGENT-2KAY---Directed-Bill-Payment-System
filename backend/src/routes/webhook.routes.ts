@@ -1,43 +1,70 @@
-import { Router } from 'express';
-import paystack from '../services/paystack.service'; // Ensure correct import
+import express, { Request, Response } from 'express';
+import axios from 'axios';
+import dotenv from 'dotenv';
+import cors from 'cors';
 
-const router = Router();
+dotenv.config();
 
-router.post('/webhook', async (req, res) => {
-          const event = req.body;
-          const hash = req.headers['x-paystack-signature'] as string;
-          const secret = process.env.PAYSTACK_SECRET_KEY as string;
+const app = express();
+app.use(cors({ origin: 'http://localhost:5173' })); // Allow frontend origin
+app.use(express.json());
 
-          // Verify the webhook signature to ensure it's coming from Paystack (optional)
-          // if (verifySignature(hash, secret)) {
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!;
 
-          if (event.event === 'charge.success') {
-                    // Extract the metadata from the event
-                    const customFields = event.data.metadata?.custom_fields || [];
-                    const phoneField = customFields.find((f: any) => f.variable_name === 'phone_number');
-                    const networkField = customFields.find((f: any) => f.variable_name === 'network');
-
-                    // Check if both phone and network are available in the metadata
-                    if (phoneField && networkField && paystack.airtime) {
-                              try {
-                                        // Call the airtime API to send airtime
-                                        const airtimeResponse = await paystack.airtime.send({
-                                                  phone: phoneField.value,
-                                                  amount: event.data.amount / 100, // Convert from kobo to naira
-                                                  network: networkField.value,
-                                        });
-
-                                        console.log('Airtime sent successfully:', airtimeResponse);
-                              } catch (error) {
-                                        console.error('Failed to send airtime:', error);
-                                        res.status(500).json({ error: 'Failed to send airtime' });
-                                        return;
+app.post('/api/create-recipient', async (req: Request, res: Response) => {
+          try {
+                    const response = await axios.post(
+                              'https://api.paystack.co/transferrecipient',
+                              {
+                                        type: 'nuban',
+                                        name: req.body.recipient_name,
+                                        account_number: req.body.account_number,
+                                        bank_code: req.body.bank_code,
+                                        currency: req.body.currency || 'NGN'
+                              },
+                              {
+                                        headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }
                               }
-                    }
+                    );
+                    res.json(response.data);
+          } catch (error: any) {
+                    res.status(400).json({ error: error.response?.data?.message || error.message });
           }
-
-          // Return a 200 status code to acknowledge the webhook
-          res.sendStatus(200);
 });
 
-export default router;
+app.post('/api/initiate-transfer', async (req: Request, res: Response) => {
+          try {
+                    const response = await axios.post(
+                              'https://api.paystack.co/transfer',
+                              {
+                                        source: 'balance',
+                                        amount: req.body.amount * 100,
+                                        recipient: req.body.recipient_code,
+                                        reason: req.body.reason
+                              },
+                              {
+                                        headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }
+                              }
+                    );
+                    res.json(response.data);
+          } catch (error: any) {
+                    res.status(400).json({ error: error.response?.data?.message || error.message });
+          }
+});
+
+app.get('/api/transfer/:reference', async (req: Request, res: Response) => {
+          try {
+                    const response = await axios.get(
+                              `https://api.paystack.co/transfer/${req.params.reference}`,
+                              {
+                                        headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }
+                              }
+                    );
+                    res.json(response.data);
+          } catch (error: any) {
+                    res.status(400).json({ error: error.response?.data?.message || error.message });
+          }
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
