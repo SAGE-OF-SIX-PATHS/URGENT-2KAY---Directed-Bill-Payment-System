@@ -7,8 +7,8 @@ const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 
 export class AuthService {
-  async register(data: { name?: string; email: string; password: string; role?: "BENEFACTOR" | "BENEFACTEE"  }) {
-    const { name, email, password, role } = data;
+  async register(data: { name?: string; email: string; phone?: string; password: string; role?: "BENEFACTOR" | "BENEFACTEE"  }) {
+    const { name, email, phone, password, role } = data;
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) throw new Error("User already exists");
@@ -19,6 +19,7 @@ export class AuthService {
       data: {
         name,
         email,
+        phone,
         password: hashedPassword,
         role: role || "BENEFACTEE",
       },
