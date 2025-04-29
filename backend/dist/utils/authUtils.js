@@ -12,6 +12,7 @@ const findOrCreateUser = async (profile) => {
             data: {
                 email,
                 name: profile.displayName,
+                googleId,
             },
         });
     }
