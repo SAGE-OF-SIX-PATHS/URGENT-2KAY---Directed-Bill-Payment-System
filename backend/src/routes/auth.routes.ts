@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { registerUser, loginUser } from "../controllers/auth.controller";
 import passport from "../service/passport";
-import jwt from "jsonwebtoken";
+import { PrismaClient , User} from "@prisma/client";
+import { generateToken } from "../utils/jwt"; // Adjust path to match your structure
+
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
@@ -13,25 +15,11 @@ router.post("/login", loginUser);
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 // Google OAuth callback
-router.get(
-  "/google/callback",
-  passport.authenticate("google", { failureRedirect: "/login", session: false  }),
-  (req, res) => {
-    if (!req.user) {
-      return res.redirect(`${process.env.FRONTEND_URL}/?error=OAuthFailed`);
-    }
-   // send JSON instead of redirecting
-   const user = req.user as any;
+router.get("/google/callback", passport.authenticate("google", { session: false }), async (req, res) => {
+  const user = req.user as User;
+  const token = generateToken(user.id); // generate JWT
+  res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
+});
 
-  
-    // Generate JWT token
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
-
-    // Now redirect to frontend with token and user info
-    const redirectUrl = `${process.env.FRONTEND_URL}/dashboard?token=${token}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name || "")}`;
-
-    res.redirect(redirectUrl);
-  }
-);
 
 export default router;
