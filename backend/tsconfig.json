@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
     "module": "CommonJS",
-    "target": "ES2017",
+    "target": "ES2021",
     "moduleResolution": "node",
     "strict": true,
+    "typeRoots": ["./node_modules/@types", "./src/types"],
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
@@ -13,6 +14,7 @@
     "rootDir": "./src",
     "resolveJsonModule": true,
     "noImplicitAny": false
+    
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

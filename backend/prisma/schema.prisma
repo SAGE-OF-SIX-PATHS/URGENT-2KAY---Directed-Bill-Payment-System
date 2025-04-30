@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -7,7 +8,6 @@
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
-}
 
 datasource db {
   provider = "postgresql"
@@ -15,7 +15,7 @@ datasource db {
 }
 
 model TransactionActivity {
-  id            Int      @id @default(autoincrement())
+  id            String               @id @default(uuid())
   transactionId Int
   userId        Int
   action        String // 'initiated', 'payment_success', 'provider_confirmed', 'failed'
@@ -27,7 +27,7 @@ model TransactionActivity {
 }
 
 model Payment {
-  id         Int                   @id @default(autoincrement())
+  id         String                @id @default(uuid())
   amount     Float
   status     String // 'pending', 'completed', 'failed'
   createdAt  DateTime              @default(now())
@@ -38,9 +38,22 @@ model Payment {
 }
 
 model User {
-  id           Int                   @id @default(autoincrement())
+  id           String                @id @default(uuid())
   email        String                @unique
   passwordHash String
   payments     Payment[]
   activities   TransactionActivity[]
+  bills        Bill[]
+}
+
+model Bill {
+  id        String   @id @default(uuid())
+  title     String
+  amount    Float
+  dueDate   DateTime
+  isPaid    Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
