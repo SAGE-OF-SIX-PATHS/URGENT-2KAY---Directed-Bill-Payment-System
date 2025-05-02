@@ -1,4 +1,5 @@
-﻿<h1 align=center>Airtime Purchase Integration with Paystack (React.js + TypeScript)</h1>
+﻿<h1 align=center>URGENT2KAY</h1>
+ <h2 align=center>URGENT-2KAY---Directed-Bill-Payment-System for accountability and ease of payment</h2>
 
 A robust Node.js backend built with TypeScript, Express, and MongoDB, designed for modern e-commerce applications.
 
