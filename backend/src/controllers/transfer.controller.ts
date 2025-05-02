@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import { PAYSTACK_SECRET_KEY } from "../config/paystack";
+import { getBankCodeByName } from "../utils/getBankCode";
 
 // Create Paystack API instance
 const paystackAPI = axios.create({
@@ -17,15 +18,19 @@ export const initiateTransfer = async (
           req: Request,
           res: Response
 ): Promise<any> => {
-          const { name, account_number, bank_code, amount, reason } = req.body;
+          const { name, account_number, bank_name, amount, reason } = req.body;
           console.log(req.body);
 
-          if (!name || !account_number || !bank_code || !amount || !reason) {
+          if (!name || !account_number || !bank_name || !amount || !reason) {
                     return res.status(400).json({ error: "Missing required fields" });
           }
 
           try {
                     // Create Transfer Recipient
+                    const bank_code = await getBankCodeByName(bank_name);
+                    if (!bank_code) {
+                              return res.status(400).json({ error: "Unsupported or invalid bank name" })
+                    }
                     const recipientResponse = await paystackAPI.post("/transferrecipient", {
                               type: "nuban",
                               name,
