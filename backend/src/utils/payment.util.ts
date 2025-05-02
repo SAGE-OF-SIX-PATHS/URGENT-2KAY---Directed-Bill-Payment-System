@@ -3,8 +3,6 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// put this one inside utils
-
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY as string;
 
 const paystack = axios.create({
