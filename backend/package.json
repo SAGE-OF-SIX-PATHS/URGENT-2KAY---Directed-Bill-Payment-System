@@ -11,7 +11,11 @@
     "license": "ISC",
     "type": "commonjs",
     "dependencies": {
+        "@nestjs/common": "^11.1.0",
+        "@nestjs/jwt": "^11.0.0",
+        "@prisma/client": "^6.7.0",
         "bcryptjs": "^3.0.2",
+        "class-validator": "^0.14.1",
         "cors": "^2.8.5",
         "dotenv": "^16.5.0",
         "express": "^5.1.0",
@@ -32,6 +36,6 @@
         "typescript": "^5.8.3"
     },
     "prisma": {
-        "schema": "backend/src/prisma/schema.prisma"
+        "schema": "./prisma/schema.prisma"
     }
 }
