@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { registerUser, loginUser } from "../controllers/auth.controller";
 import passport from "../service/passport";
-import { PrismaClient , User} from "@prisma/client";
 import { generateToken } from "../utils/jwt"; // Adjust path to match your structure
 
 
@@ -16,7 +15,7 @@ router.get("/google", passport.authenticate("google", { scope: ["profile", "emai
 
 // Google OAuth callback
 router.get("/google/callback", passport.authenticate("google", { session: false }), async (req, res) => {
-  const user = req.user as User;
+  const user = req.user as any;
   const token = generateToken(user.id); // generate JWT
   res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
 });
