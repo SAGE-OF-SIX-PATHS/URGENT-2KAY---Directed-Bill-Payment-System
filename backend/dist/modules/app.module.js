@@ -10,13 +10,14 @@ exports.AppModule = exports.BillModule = void 0;
 const common_1 = require("@nestjs/common");
 const bill_controller_1 = require("../controllers/bill.controller");
 const billService_1 = require("../service/billService");
+const app_controller_1 = require("../controllers/app.controller");
 let BillModule = class BillModule {
 };
 exports.BillModule = BillModule;
 exports.BillModule = BillModule = __decorate([
     (0, common_1.Module)({
         imports: [],
-        controllers: [bill_controller_1.BillController],
+        controllers: [bill_controller_1.BillController, app_controller_1.AppController],
         providers: [billService_1.BillService],
     })
 ], BillModule);
