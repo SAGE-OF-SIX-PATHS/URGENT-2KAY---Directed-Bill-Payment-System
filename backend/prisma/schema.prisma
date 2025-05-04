@@ -1,59 +1,127 @@
-<<<<<<< HEAD
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  output   = "./node_modules/@prisma/client"
+}
+
+
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model TransactionActivity {
-  id            String               @id @default(uuid())
-  transactionId Int
-  userId        Int
-  action        String // 'initiated', 'payment_success', 'provider_confirmed', 'failed'
-  description   String
-  timestamp     DateTime @default(now())
-
-  transaction Payment @relation(fields: [transactionId], references: [id])
-  user        User    @relation(fields: [userId], references: [id])
+enum Role {
+  BENEFACTOR
+  BENEFACTEE
 }
 
-model Payment {
-  id         String                @id @default(uuid())
-  amount     Float
-  status     String // 'pending', 'completed', 'failed'
-  createdAt  DateTime              @default(now())
-  updatedAt  DateTime              @updatedAt
-  activities TransactionActivity[]
-  User       User?                 @relation(fields: [userId], references: [id])
-  userId     Int?
+enum BillStatus {
+  PENDING
+  APPROVED
+  FAILED
+  PAID
 }
 
 model User {
   id           String                @id @default(uuid())
   email        String                @unique
   passwordHash String
+  name         String?
+  role         Role                  @default(BENEFACTEE)
   payments     Payment[]
   activities   TransactionActivity[]
   bills        Bill[]
+  requests     Request[]             @relation("RequestedBy")
+  supports     Request[]             @relation("SupportedBy")
+  wallet       Wallet?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+}
+
+model Payment {
+  id        String   @id @default(uuid())
+  amount    Float
+  status    String // 'pending', 'completed', 'failed'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model Provider {
+  id        String   @id @default(uuid())
+  name      String
+  verified  Boolean  @default(false)
+  bills     Bill[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Bill {
+  id            String        @id @default(uuid())
+  title         String?
+  description   String
+  amount        Float
+  status        BillStatus    @default(PENDING)
+  category      String?
+  dueDate       DateTime?
+  paymentMethod String?
+  isPaid        Boolean       @default(false)
+  userId        String
+  providerId    String?
+  requestId     String?
+  user          User          @relation(fields: [userId], references: [id])
+  provider      Provider?     @relation(fields: [providerId], references: [id])
+  request       Request?      @relation(fields: [requestId], references: [id])
+  transactions  Transaction[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Request {
+  id          String   @id @default(uuid())
+  notes       String?
+  priority    String?
+  requesterId String
+  supporterId String
+  bills       Bill[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  requester   User     @relation("RequestedBy", fields: [requesterId], references: [id])
+  supporter   User     @relation("SupportedBy", fields: [supporterId], references: [id])
+}
+
+model Wallet {
   id        String   @id @default(uuid())
-  title     String
-  amount    Float
-  dueDate   DateTime
-  isPaid    Boolean  @default(false)
-  userId    String
+  balance   Float    @default(0)
+  userId    String   @unique
   user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model Transaction {
+  id         String                @id @default(uuid())
+  amount     Float
+  status     String                @default("PENDING")
+  billId     String
+  reference  String                @unique
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+  bill       Bill                  @relation(fields: [billId], references: [id])
+  activities TransactionActivity[] // ✅ Opposite relation added
+}
+
+model TransactionActivity {
+  id            String   @id @default(uuid())
+  transactionId String
+  userId        String
+  action        String // 'initiated', 'payment_success', etc.
+  description   String
+  timestamp     DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
 }
