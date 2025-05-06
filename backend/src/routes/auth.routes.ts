@@ -4,7 +4,7 @@ import passport from "../service/passport";
 import { generateToken } from "../utils/jwt";
 
 const router = Router();
-const FRONTEND_URLS = (process.env.FRONTEND_URLS || "http://localhost:5173").split(",");
+const FRONTEND_URLS = (process.env.FRONTEND_URL || "http://localhost:5173").split(",");
 
 router.post("/register", registerUser);
 router.post("/login", loginUser);
