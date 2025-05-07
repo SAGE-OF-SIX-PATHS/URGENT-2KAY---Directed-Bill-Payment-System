@@ -13,6 +13,7 @@ export const findOrCreateUser = async (profile: any) => {
         email,
         name: profile.displayName,
         googleId,
+        role,
       },
     });
   }
