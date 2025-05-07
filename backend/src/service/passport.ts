@@ -12,6 +12,10 @@ passport.use(new GoogleStrategy(
   },
   async (req: any, accessToken, refreshToken, profile, done)  => {
      const role = req.query.role || "BENEFACTEE"; 
+
+  // Log role from frontend
+    console.log("👉 Role received from frontend:", role);
+    
     const user = await findOrCreateUser(profile, role);
   return done(null, user);
   }
