@@ -1,7 +1,7 @@
 // src/utils/authUtils.ts (or similar)
 import { prisma } from "../lib/prisma"; // adjust path as needed
 
-export const findOrCreateUser = async (profile: any, role: "BENEFACTOR" | "BENEFACTEE") => {
+export const findOrCreateUser = async (profile: any, role: string) => {
   const email = profile.emails[0].value;
   const googleId = profile.id;
 
@@ -13,7 +13,7 @@ export const findOrCreateUser = async (profile: any, role: "BENEFACTOR" | "BENEF
         email,
         name: profile.displayName,
         googleId,
-        role,
+        role: role.toUpperCase() as "BENEFACTOR" | "BENEFACTEE",
       },
     });
   }
