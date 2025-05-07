@@ -11,7 +11,7 @@ passport.use(new GoogleStrategy(
     passReqToCallback: true,
   },
   async (req: any, accessToken, refreshToken, profile, done)  => {
-     const role = req.query.role || "benefactee"; 
+     const role = req.query.role || "BENEFACTEE"; 
     const user = await findOrCreateUser(profile, role);
   return done(null, user);
   }
