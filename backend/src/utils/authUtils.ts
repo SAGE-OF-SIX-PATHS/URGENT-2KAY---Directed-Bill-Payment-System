@@ -1,7 +1,7 @@
 // src/utils/authUtils.ts (or similar)
 import { prisma } from "../lib/prisma"; // adjust path as needed
 
-export const findOrCreateUser = async (profile: any, role: string) => {
+export const findOrCreateUser = async (profile: any, role: "BENEFACTOR" | "BENEFACTEE") => {
   const email = profile.emails[0].value;
   const googleId = profile.id;
 
