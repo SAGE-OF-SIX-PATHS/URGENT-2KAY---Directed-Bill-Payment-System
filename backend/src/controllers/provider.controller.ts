@@ -1,28 +1,26 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
-import { PrismaService } from '../service/prisma.service';
+import { ProvidersService } from '../service/provider.service'; // Import ProvidersService
 import { CreateProviderDto } from '../dto/CreatProviderDto';
 
 @Controller('providers')
 export class ProviderController {
-  providersService: any;
-  constructor(private prisma: PrismaService) {}
+  constructor(private providersService: ProvidersService) {}
 
+  // Endpoint to create a provider
   @Post()
   async create(@Body() body: { name: string }) {
-    return this.prisma.provider.create({
-      data: {
-        name: body.name,
-      },
-    });
+    return this.providersService.create({ name: body.name });
   }
 
+  // Endpoint to retrieve all providers
   @Get()
   async findAll() {
-    return this.prisma.provider.findMany();
+    return this.providersService.findAll();
   }
 
-  @Post()
-  async createwithdto(@Body() createProviderDto: CreateProviderDto) {
+  // Endpoint to create provider with DTO
+  @Post('with-dto')
+  async createWithDto(@Body() createProviderDto: CreateProviderDto) {
     return this.providersService.create(createProviderDto);
   }
 }

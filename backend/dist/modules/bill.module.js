@@ -9,16 +9,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BillModule = void 0;
 const common_1 = require("@nestjs/common");
 const bill_controller_1 = require("../controllers/bill.controller");
-const billService_1 = require("../service/billService"); //
-// import { BillService } from './bill.service';
-// import { BillController } from './bill.controller';
+const billService_1 = require("../service/billService");
 let BillModule = class BillModule {
 };
 exports.BillModule = BillModule;
 exports.BillModule = BillModule = __decorate([
     (0, common_1.Module)({
-        imports: [],
-        providers: [billService_1.BillService],
         controllers: [bill_controller_1.BillController],
+        providers: [billService_1.BillService],
+        exports: [billService_1.BillService], // Export if needed in other modules
     })
 ], BillModule);

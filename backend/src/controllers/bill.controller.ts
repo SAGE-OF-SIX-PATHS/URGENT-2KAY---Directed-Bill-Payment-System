@@ -18,8 +18,7 @@ export class BillController {
   constructor(private readonly billService: BillService) {}
 
   private getUserId(req: Request): string {
-    // In production, extract from JWT or session
-    return 'test-user-id'; 
+    return 'test-user-id';  // In production, use a real user identification method (JWT, sessions, etc.)
   }
 
   @Post()

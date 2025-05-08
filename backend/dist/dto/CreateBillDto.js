@@ -18,17 +18,12 @@ __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], CreateBillDto.prototype, "provider", void 0);
+], CreateBillDto.prototype, "providerId", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], CreateBillDto.prototype, "description", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], CreateBillDto.prototype, "customerName", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
@@ -38,3 +33,8 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Date)
 ], CreateBillDto.prototype, "dueDate", void 0);
+__decorate([
+    (0, class_validator_1.IsObject)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], CreateBillDto.prototype, "metadata", void 0);

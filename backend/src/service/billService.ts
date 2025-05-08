@@ -1,14 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateBillDto } from '../dto/CreateBillDto';
 import { UpdateBillDto } from '../dto/UpdateBillDto';
-import { PrismaService } from '../service/prisma.service';
+import { PrismaService } from './prisma.service';
 
 @Injectable()
 export class BillService {
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateBillDto): Promise<any> {
-    const provider = await this.prisma.provider.findUnique({ where: { id: dto.providerId } });
+    const provider = await this.prisma.provider.findUnique({
+      where: { id: dto.providerId },
+    });
     if (!provider) throw new NotFoundException('Provider not found');
 
     return this.prisma.bill.create({
@@ -16,14 +18,14 @@ export class BillService {
         description: dto.description,
         amount: dto.amount,
         dueDate: dto.dueDate,
+        userId,
+        providerId: dto.providerId,
         metadata: {
           create: Object.entries(dto.metadata || {}).map(([key, value]) => ({
             key,
             value: String(value),
           })),
         },
-        userId,
-        providerId: dto.providerId,
       },
     });
   }
@@ -48,5 +50,9 @@ export class BillService {
     if (!bill) throw new NotFoundException('Bill not found');
 
     return this.prisma.bill.delete({ where: { id } });
+  }
+
+  getBills() {
+    return { message: 'List of bills' };
   }
 }

@@ -6,21 +6,21 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AppModule = exports.BillModule = void 0;
+exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
+const prisma_module_1 = require("./prisma.module"); // Import PrismaModule
 const bill_controller_1 = require("../controllers/bill.controller");
-const billService_1 = require("../service/billService");
 const app_controller_1 = require("../controllers/app.controller");
-let BillModule = class BillModule {
+const provider_controller_1 = require("../controllers/provider.controller");
+const bill_module_1 = require("./bill.module");
+const provider_module_1 = require("./provider.module");
+let AppModule = class AppModule {
 };
-exports.BillModule = BillModule;
-exports.BillModule = BillModule = __decorate([
-    (0, common_1.Module)({
-        imports: [],
-        controllers: [bill_controller_1.BillController, app_controller_1.AppController],
-        providers: [billService_1.BillService],
-    })
-], BillModule);
-class AppModule {
-}
 exports.AppModule = AppModule;
+exports.AppModule = AppModule = __decorate([
+    (0, common_1.Module)({
+        imports: [prisma_module_1.PrismaModule, bill_module_1.BillModule, provider_module_1.ProviderModule], // Add PrismaModule here
+        controllers: [app_controller_1.AppController, bill_controller_1.BillController, provider_controller_1.ProviderController],
+        providers: [],
+    })
+], AppModule);

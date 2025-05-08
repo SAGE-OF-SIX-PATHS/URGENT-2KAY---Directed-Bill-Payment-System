@@ -5,4 +5,3 @@ export class UpdateBillDto {
   readonly dueDate?: Date;
   readonly paymentStatus?: string;
 }
-

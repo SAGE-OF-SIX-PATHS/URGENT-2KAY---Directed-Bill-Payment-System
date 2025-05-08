@@ -1,28 +1,40 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Module } from '@nestjs/common';
 import { CreateProviderDto } from '../dto/CreatProviderDto';
-import { PrismaService } from '../service/prisma.service';
-import { Provider } from '@prisma/client';
+import { PrismaService } from './prisma.service';
+// Removed conflicting import of ProvidersService
+import { ProviderController } from '../controllers/provider.controller';
+
 
 @Injectable()
 export class ProvidersService {
-  private _providers = { name: string, id:  }[] = [];  // Simulating a database for now
+  constructor(private prisma: PrismaService) {}
 
-  // This method creates a new provider
-  create(createProviderDto: CreateProviderDto) {
-    const newProvider = {
-      id: Date.now().toString(), // You can generate a UUID here if needed
-      name: createProviderDto.name,
-    };
-    this._providers.push(newProvider);
-    return newProvider;
+  // This method creates a new provider in the database
+  async create(createProviderDto: CreateProviderDto) {
+    return this.prisma.provider.create({
+      data: {
+        name: createProviderDto.name,
+      },
+    });
   }
 
-  // Optional: Add more methods to retrieve or manage providers
-  findAll() {
-    return this._providers;
+  // Retrieve all providers from the database
+  async findAll() {
+    return this.prisma.provider.findMany();
   }
 
-  findOne(id: string) {
-    return this._providers.find(provider => provider.id === id);
+  // Retrieve a single provider by its ID
+  async findOne(id: string) {
+    return this.prisma.provider.findUnique({
+      where: { id },
+    });
   }
 }
+
+@Module({
+  imports: [], // If needed, import other modules here
+  providers: [ProvidersService, PrismaService], // Add ProvidersService here
+  controllers: [ProviderController], // Ensure the controller is listed here
+})
+
+export class ProviderModule {}

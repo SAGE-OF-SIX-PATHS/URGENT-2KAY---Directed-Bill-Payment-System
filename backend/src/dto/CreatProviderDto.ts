@@ -1,4 +1,3 @@
 export class CreateProviderDto {
-    name!: string;
-  }
-  
+  name!: string;
+}

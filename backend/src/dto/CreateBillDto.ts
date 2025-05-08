@@ -26,4 +26,4 @@ export class CreateBillDto {
   @IsObject()
   @IsOptional()
   metadata?: Record<string, any>; // dynamic fields like phoneNumber, meterNumber, etc.
-} 
+}

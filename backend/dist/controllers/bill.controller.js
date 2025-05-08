@@ -21,25 +21,28 @@ let BillController = class BillController {
     constructor(billService) {
         this.billService = billService;
     }
+    getUserId(req) {
+        return 'test-user-id'; // In production, use a real user identification method (JWT, sessions, etc.)
+    }
     create(req, dto) {
-        const testUserId = 'test-user-id';
-        return this.billService.create(testUserId, dto);
+        const userId = this.getUserId(req);
+        return this.billService.create(userId, dto);
     }
     findAll(req) {
-        const testUserId = 'test-user-id';
-        return this.billService.findAll(testUserId);
+        const userId = this.getUserId(req);
+        return this.billService.findAll(userId);
     }
     findOne(req, id) {
-        const testUserId = 'test-user-id';
-        return this.billService.findOne(testUserId, id);
+        const userId = this.getUserId(req);
+        return this.billService.findOne(userId, id);
     }
     update(req, id, dto) {
-        const testUserId = 'test-user-id';
-        return this.billService.update(testUserId, id, dto);
+        const userId = this.getUserId(req);
+        return this.billService.update(userId, id, dto);
     }
     remove(req, id) {
-        const testUserId = 'test-user-id';
-        return this.billService.remove(testUserId, id);
+        const userId = this.getUserId(req);
+        return this.billService.remove(userId, id);
     }
 };
 exports.BillController = BillController;

@@ -11,22 +11,30 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BillService = void 0;
 const common_1 = require("@nestjs/common");
-const prisma_service_1 = require("../service/prisma.service");
-const APPROVED_PROVIDERS = ['NEPA', 'MTN', 'GLO', 'University of Lagos'];
+const prisma_service_1 = require("./prisma.service");
 let BillService = class BillService {
     constructor(prisma) {
         this.prisma = prisma;
     }
     async create(userId, dto) {
-        if (!APPROVED_PROVIDERS.includes(dto.provider)) {
-            throw new Error('Provider not approved');
-        }
-        const { customerName, provider, amount, dueDate } = dto;
+        const provider = await this.prisma.provider.findUnique({
+            where: { id: dto.providerId },
+        });
+        if (!provider)
+            throw new common_1.NotFoundException('Provider not found');
         return this.prisma.bill.create({
             data: {
-                customerName, provider, amount, dueDate,
+                description: dto.description,
+                amount: dto.amount,
+                dueDate: dto.dueDate,
                 userId,
-                status: 'PENDING',
+                providerId: dto.providerId,
+                metadata: {
+                    create: Object.entries(dto.metadata || {}).map(([key, value]) => ({
+                        key,
+                        value: String(value),
+                    })),
+                },
             },
         });
     }
@@ -47,6 +55,9 @@ let BillService = class BillService {
         if (!bill)
             throw new common_1.NotFoundException('Bill not found');
         return this.prisma.bill.delete({ where: { id } });
+    }
+    getBills() {
+        return { message: 'List of bills' };
     }
 };
 exports.BillService = BillService;
