@@ -1,17 +1,20 @@
-import { IsNotEmpty, IsString, IsNumber, IsOptional, IsDate } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsDate,
+  IsObject,
+} from 'class-validator';
 
 export class CreateBillDto {
   @IsString()
   @IsNotEmpty()
-  provider!: string ;
+  providerId!: string;
 
   @IsString()
   @IsNotEmpty()
   description!: string;
-
-  @IsString()
-  @IsOptional()
-  customerName?: string;
 
   @IsNumber()
   amount!: number;
@@ -19,4 +22,8 @@ export class CreateBillDto {
   @IsDate()
   @IsOptional()
   dueDate?: Date;
-}
+
+  @IsObject()
+  @IsOptional()
+  metadata?: Record<string, any>; // dynamic fields like phoneNumber, meterNumber, etc.
+} 

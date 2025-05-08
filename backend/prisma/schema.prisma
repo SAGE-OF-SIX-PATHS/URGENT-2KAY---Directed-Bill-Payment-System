@@ -2,10 +2,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "./node_modules/@prisma/client"
 }
-
-
 
 datasource db {
   provider = "postgresql"
@@ -22,6 +19,16 @@ enum BillStatus {
   APPROVED
   FAILED
   PAID
+}
+
+enum BillType {
+  AIRTIME
+  DATA
+  ELECTRICITY
+  CABLE
+  WATER
+  EDUCATION
+  OTHER
 }
 
 model User {
@@ -65,6 +72,7 @@ model Bill {
   description   String
   amount        Float
   status        BillStatus    @default(PENDING)
+  type          BillType?
   category      String?
   dueDate       DateTime?
   paymentMethod String?
@@ -76,8 +84,18 @@ model Bill {
   provider      Provider?     @relation(fields: [providerId], references: [id])
   request       Request?      @relation(fields: [requestId], references: [id])
   transactions  Transaction[]
+  metadata      BillMetadata[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+}
+
+model BillMetadata {
+  id        String   @id @default(uuid())
+  billId    String
+  key       String
+  value     String
+
+  bill      Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
 }
 
 model Request {
@@ -111,7 +129,7 @@ model Transaction {
   createdAt  DateTime              @default(now())
   updatedAt  DateTime              @updatedAt
   bill       Bill                  @relation(fields: [billId], references: [id])
-  activities TransactionActivity[] // ✅ Opposite relation added
+  activities TransactionActivity[]
 }
 
 model TransactionActivity {

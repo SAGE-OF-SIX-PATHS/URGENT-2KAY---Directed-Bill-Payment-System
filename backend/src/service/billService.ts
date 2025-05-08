@@ -2,27 +2,28 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateBillDto } from '../dto/CreateBillDto';
 import { UpdateBillDto } from '../dto/UpdateBillDto';
 import { PrismaService } from '../service/prisma.service';
-import { Prisma } from '@prisma/client'; 
 
-const APPROVED_PROVIDERS = ['NEPA', 'MTN', 'GLO', 'University of Lagos'];
- 
 @Injectable()
 export class BillService {
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateBillDto): Promise<any> {
-    if (!APPROVED_PROVIDERS.includes(dto.provider)) {
-      throw new Error('Provider not approved');
-    }
-
-    const { customerName, provider, amount, dueDate } = dto;
+    const provider = await this.prisma.provider.findUnique({ where: { id: dto.providerId } });
+    if (!provider) throw new NotFoundException('Provider not found');
 
     return this.prisma.bill.create({
       data: {
-        customerName, provider, amount, dueDate,
-         userId,
-        
-        status: 'PENDING',
+        description: dto.description,
+        amount: dto.amount,
+        dueDate: dto.dueDate,
+        metadata: {
+          create: Object.entries(dto.metadata || {}).map(([key, value]) => ({
+            key,
+            value: String(value),
+          })),
+        },
+        userId,
+        providerId: dto.providerId,
       },
     });
   }
