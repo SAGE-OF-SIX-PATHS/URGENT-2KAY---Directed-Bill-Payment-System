@@ -6,16 +6,19 @@ import authRoutes from "./routes/auth.routes";
 import session from "express-session";
 import passport from "./service/passport";
 
-const prisma = new PrismaClient();
+//Nzube
+import bodyParser from "body-parser";
+import paystackRoutes from "./routes/payment.routes";
+import { PORT } from "./config/paystack";
+import { emailRouter } from "./routes/emailRoutes";
+import { loggerMiddleware } from './middlewares/emailLoggerMiddleware';
+import { errorHandler } from './middlewares/emailErrorMiddleware';
 
+const prisma = new PrismaClient();
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-
-
-app.use(express.json());
 
 app.use(cors({
   origin: process.env.FRONTEND_URL,  // your frontend URL
@@ -34,13 +37,21 @@ app.use(
   })
 );
 
-
+app.use(bodyParser.json());
+app.use(express.json());
+app.use(loggerMiddleware);
 
 app.use(passport.initialize());
 app.use(passport.session());
 
 // Routes
 app.use("/auth", authRoutes);
+// Routes
+app.use('/api/email', emailRouter);
+app.use("/transaction", paystackRoutes);
+
+// Error Handling (should be last middleware)
+app.use(errorHandler);
 
 // Health check route
 app.get("/", (_req, res) => {
