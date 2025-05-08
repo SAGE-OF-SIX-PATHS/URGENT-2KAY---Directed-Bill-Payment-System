@@ -6,8 +6,8 @@ export const emailRouter = express.Router();
 
 emailRouter.post('/send-email', async (req, res, next) => {
           try {
-                    const { email, subject, message } = req.body;
-                    await emailService(email, subject, message);
+                    const { to, subject, message } = req.body;
+                    await emailService(to, subject, message);
                     res.status(200).json({ success: true, message: 'Email sent successfully' });
           } catch (error) {
                     // Added error logging and proper error propagation
