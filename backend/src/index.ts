@@ -11,7 +11,7 @@ import { errorHandler } from './middlewares/emailErrorMiddleware';
 const app = express();
 
 app.use(cors({
-          origin: 'http://localhost:5000'   
+          origin: 'https://web-dash-spark.vercel.app'   
 }));
 app.use(bodyParser.json());
 app.use(express.json());
