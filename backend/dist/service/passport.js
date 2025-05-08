@@ -10,8 +10,12 @@ passport_1.default.use(new passport_google_oauth20_1.Strategy({
     clientID: process.env.GOOGLE_CLIENT_ID || "",
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     callbackURL: process.env.GOOGLE_CALLBACK_URL || "",
-}, async (accessToken, refreshToken, profile, done) => {
-    const user = await (0, authUtils_1.findOrCreateUser)(profile);
+    passReqToCallback: true,
+}, async (req, accessToken, refreshToken, profile, done) => {
+    const role = req.query.role || "BENEFACTEE";
+    // Log role from frontend
+    console.log("👉 Role received from frontend:", role);
+    const user = await (0, authUtils_1.findOrCreateUser)(profile, role);
     return done(null, user);
 }));
 exports.default = passport_1.default;

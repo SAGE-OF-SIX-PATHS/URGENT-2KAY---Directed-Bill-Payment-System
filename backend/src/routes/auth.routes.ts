@@ -10,7 +10,18 @@ router.post("/register", registerUser);
 router.post("/login", loginUser);
 
 // Start Google OAuth login
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+router.get("/google", (req, res, next) => {
+  const state = req.query.state?.toString() || "";
+
+  console.log("this is the state from the authRoute", state)
+
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    state, // ✅ pass the state manually
+    session: false,
+  })(req, res, next);
+});
+;
 
 // Google OAuth callback
 router.get(
