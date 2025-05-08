@@ -12,7 +12,16 @@ const FRONTEND_URLS = (process.env.FRONTEND_URL || "http://localhost:5173").spli
 router.post("/register", auth_controller_1.registerUser);
 router.post("/login", auth_controller_1.loginUser);
 // Start Google OAuth login
-router.get("/google", passport_1.default.authenticate("google", { scope: ["profile", "email"] }));
+router.get("/google", (req, res, next) => {
+    const state = req.query.state?.toString() || "";
+    console.log("this is the state from the authRoute", state);
+    passport_1.default.authenticate("google", {
+        scope: ["profile", "email"],
+        state, // ✅ pass the state manually
+        session: false,
+    })(req, res, next);
+});
+;
 // Google OAuth callback
 router.get("/google/callback", passport_1.default.authenticate("google", { session: false }), async (req, res) => {
     const user = req.user;
