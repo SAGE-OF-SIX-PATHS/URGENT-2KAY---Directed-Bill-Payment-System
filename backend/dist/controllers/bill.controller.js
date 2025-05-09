@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getBillById = exports.getAllBills = exports.createBill = void 0;
+exports.deleteBill = exports.updateBill = exports.getBillById = exports.getAllBills = exports.createBill = void 0;
 const prisma_1 = require("../lib/prisma");
 const createBill = async (req, res) => {
     try {
@@ -92,3 +92,70 @@ const getBillById = async (req, res) => {
     }
 };
 exports.getBillById = getBillById;
+// Update an existing bill
+const updateBill = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const { id } = req.params;
+        const { billName, type, amount, note, dueDate, priority, providerId } = req.body;
+        if (!userId) {
+            res.status(401).json({ error: "Unauthorized" });
+            return;
+        }
+        const existingBill = await prisma_1.prisma.bill.findUnique({ where: { id } });
+        if (!existingBill || existingBill.userId !== userId) {
+            res.status(404).json({ error: "Bill not found or unauthorized" });
+            return;
+        }
+        // Optional: Validate new provider ID if changed
+        let provider = null; // 
+        if (providerId) {
+            provider = await prisma_1.prisma.provider.findUnique({ where: { id: providerId } });
+            if (!provider) {
+                res.status(404).json({ error: "Invalid provider ID" });
+                return;
+            }
+        }
+        const updatedBill = await prisma_1.prisma.bill.update({
+            where: { id },
+            data: {
+                billName,
+                type,
+                amount: amount ? parseFloat(amount) : undefined,
+                note,
+                dueDate: dueDate ? new Date(dueDate) : undefined,
+                priority,
+                providerId: provider?.id,
+            },
+        });
+        res.status(200).json({ message: "Bill updated successfully", bill: updatedBill });
+    }
+    catch (error) {
+        console.error("Error updating bill:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+exports.updateBill = updateBill;
+// Delete an existing bill
+const deleteBill = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const { id } = req.params;
+        if (!userId) {
+            res.status(401).json({ error: "Unauthorized" });
+            return;
+        }
+        const bill = await prisma_1.prisma.bill.findUnique({ where: { id } });
+        if (!bill || bill.userId !== userId) {
+            res.status(404).json({ error: "Bill not found or unauthorized" });
+            return;
+        }
+        await prisma_1.prisma.bill.delete({ where: { id } });
+        res.status(200).json({ message: "Bill deleted successfully" });
+    }
+    catch (error) {
+        console.error("Error deleting bill:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+exports.deleteBill = deleteBill;
