@@ -1,29 +1,27 @@
 import { Injectable, Module } from '@nestjs/common';
 import { CreateProviderDto } from '../dto/CreatProviderDto';
 import { PrismaService } from './prisma.service';
-// Removed conflicting import of ProvidersService
-import { ProviderController } from '../controllers/provider.controller';
-
+import { ProviderController as ExternalProviderController } from '../controllers/provider.controller';
+import { Controller, Post, Body } from '@nestjs/common';
+// Removed redundant import of ProvidersService
 
 @Injectable()
 export class ProvidersService {
   constructor(private prisma: PrismaService) {}
 
-  // This method creates a new provider in the database
-  async create(createProviderDto: CreateProviderDto) {
+  async createProvider(createProviderDto: CreateProviderDto) {
     return this.prisma.provider.create({
       data: {
         name: createProviderDto.name,
+        contactInfo: createProviderDto.contactInfo,
       },
     });
   }
 
-  // Retrieve all providers from the database
   async findAll() {
     return this.prisma.provider.findMany();
   }
 
-  // Retrieve a single provider by its ID
   async findOne(id: string) {
     return this.prisma.provider.findUnique({
       where: { id },
@@ -31,10 +29,19 @@ export class ProvidersService {
   }
 }
 
-@Module({
-  imports: [], // If needed, import other modules here
-  providers: [ProvidersService, PrismaService], // Add ProvidersService here
-  controllers: [ProviderController], // Ensure the controller is listed here
-})
+@Controller('providers')
+export class InternalProviderController {
+  constructor(private providersService: ProvidersService) {}
 
+  @Post()
+  async create(@Body() createProviderDto: CreateProviderDto) {
+    return this.providersService.createProvider(createProviderDto);
+  }
+}
+
+@Module({
+  imports: [],
+  providers: [ProvidersService, PrismaService],
+  controllers: [InternalProviderController],
+})
 export class ProviderModule {}

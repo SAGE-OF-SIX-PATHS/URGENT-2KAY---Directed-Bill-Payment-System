@@ -7,6 +7,7 @@ import {
   Delete,
   Patch,
   Req,
+  NotFoundException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { CreateBillDto } from '../dto/CreateBillDto';
@@ -46,8 +47,11 @@ export class BillController {
   }
 
   @Delete(':id')
-  remove(@Req() req: Request, @Param('id') id: string) {
-    const userId = this.getUserId(req);
-    return this.billService.remove(userId, id);
+  async delete(@Param('id') id: string) {
+    const bill = await this.billService.delete(id);
+    if (!bill) {
+      throw new NotFoundException(`Bill with ID ${id} not found`);
+    }
+    return { message: `Bill with ID ${id} deleted successfully`, bill };
   }
 }

@@ -2,23 +2,45 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateBillDto } from '../dto/CreateBillDto';
 import { UpdateBillDto } from '../dto/UpdateBillDto';
 import { PrismaService } from './prisma.service';
+import { Bill } from '@prisma/client';
 
 @Injectable()
 export class BillService {
+  // Removed duplicate delete method
   constructor(private prisma: PrismaService) {}
 
-  async create(userId: string, dto: CreateBillDto): Promise<any> {
+  async create(id: string, dto: CreateBillDto): Promise<any> {
+    console.log('dueDate (before Prisma):', dto.dueDate);
+
+    // Check if the provider exists
     const provider = await this.prisma.provider.findUnique({
       where: { id: dto.providerId },
     });
-    if (!provider) throw new NotFoundException('Provider not found');
 
+    if (!provider) {
+      const providersCount = await this.prisma.provider.count();
+      if (providersCount === 0) {
+        throw new NotFoundException('No providers exist in the database. Please add a provider first.');
+      }
+      throw new NotFoundException('Provider not found');
+    }
+
+    // Check if the user exists
+    const user = await this.prisma.user.findUnique({
+      where: { id }, // Use `id` instead of `userId`
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    // Create the bill
     return this.prisma.bill.create({
       data: {
         description: dto.description,
         amount: dto.amount,
         dueDate: dto.dueDate,
-        userId,
+        userId: id, // Use `id` here
         providerId: dto.providerId,
         metadata: {
           create: Object.entries(dto.metadata || {}).map(([key, value]) => ({
@@ -45,11 +67,11 @@ export class BillService {
     return this.prisma.bill.update({ where: { id }, data: dto });
   }
 
-  async remove(userId: string, id: string): Promise<any> {
-    const bill = await this.findOne(userId, id);
-    if (!bill) throw new NotFoundException('Bill not found');
-
-    return this.prisma.bill.delete({ where: { id } });
+  async delete(id: string): Promise<Bill | null> {
+    const bill = await this.prisma.bill.delete({
+      where: { id },
+    }).catch(() => null); // Return null if the bill does not exist
+    return bill;
   }
 
   getBills() {
