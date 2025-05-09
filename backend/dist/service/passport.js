@@ -5,22 +5,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const passport_1 = __importDefault(require("passport"));
 const passport_google_oauth20_1 = require("passport-google-oauth20");
-<<<<<<< HEAD
-const authUtils_1 = require("../utils/authUtils"); // adjust path if different
-=======
 const authUtils_1 = require("../utils/authUtils");
->>>>>>> develop
 passport_1.default.use(new passport_google_oauth20_1.Strategy({
     clientID: process.env.GOOGLE_CLIENT_ID || "",
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     callbackURL: process.env.GOOGLE_CALLBACK_URL || "",
     passReqToCallback: true,
 }, async (req, accessToken, refreshToken, profile, done) => {
-<<<<<<< HEAD
-    const role = req.query.role || "BENEFACTEE";
-    // Log role from frontend
-    console.log("👉 Role received from frontend:", role);
-=======
     let role = "BENEFACTEE"; // default
     try {
         if (req.query.state) {
@@ -34,7 +25,6 @@ passport_1.default.use(new passport_google_oauth20_1.Strategy({
         console.error("Failed to parse state param:", error);
     }
     console.log("👉 Role from state:", role);
->>>>>>> develop
     const user = await (0, authUtils_1.findOrCreateUser)(profile, role);
     return done(null, user);
 }));

@@ -3,21 +3,29 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authenticateJWT = void 0;
+exports.isAuthenticated = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const authenticateJWT = (req, res, next) => {
+const prisma_1 = require("../lib/prisma");
+const isAuthenticated = async (req, res, next) => {
     const authHeader = req.headers.authorization;
-    if (authHeader) {
-        const token = authHeader.split(" ")[1];
-        jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET, (err, user) => {
-            if (err)
-                return res.sendStatus(403);
-            req.user = user;
-            next();
-        });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
     }
-    else {
-        res.sendStatus(401);
+    const token = authHeader.split(" ")[1];
+    try {
+        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        const user = await prisma_1.prisma.user.findUnique({ where: { id: decoded.userId } });
+        if (!user) {
+            res.status(401).json({ error: "User not found" });
+            return;
+        }
+        req.user = user; // this works because of your custom type declaration
+        next(); // ✅ must call next() or return
+    }
+    catch (error) {
+        console.log(error);
+        res.status(401).json({ error: "Invalid token" });
     }
 };
-exports.authenticateJWT = authenticateJWT;
+exports.isAuthenticated = isAuthenticated;

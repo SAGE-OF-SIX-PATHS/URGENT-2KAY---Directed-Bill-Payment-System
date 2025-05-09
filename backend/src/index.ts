@@ -5,8 +5,9 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
 import session from "express-session";
 import passport from "./service/passport";
+import billRoutes from "./routes/bill.routes";
 
-//Nzube
+
 import bodyParser from "body-parser";
 import paystackRoutes from "./routes/payment.routes";
 import { PORT } from "./config/paystack";
@@ -46,7 +47,8 @@ app.use(passport.session());
 
 // Routes
 app.use("/auth", authRoutes);
-// Routes
+app.use("/bills", billRoutes);
+
 app.use('/api/email', emailRouter);
 app.use("/transaction", paystackRoutes);
 
