@@ -21,7 +21,10 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173" ,  // your frontend URL
+  origin: [
+    "http://localhost:5173",
+    "https://web-dash-spark.vercel.app"
+  ],
   credentials: true,                // allow cookies
 }));
 
