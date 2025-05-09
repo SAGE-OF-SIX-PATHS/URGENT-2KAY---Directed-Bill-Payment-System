@@ -57,7 +57,13 @@ export class BillService {
   }
 
   async findOne(userId: string, id: string): Promise<any | null> {
-    return this.prisma.bill.findFirst({ where: { id, userId } });
+    console.log('Finding bill with:', { userId, id });
+    return this.prisma.bill.findFirst({
+      where: {
+        id,
+        userId,
+      },
+    });
   }
 
   async update(userId: string, id: string, dto: UpdateBillDto): Promise<any> {
