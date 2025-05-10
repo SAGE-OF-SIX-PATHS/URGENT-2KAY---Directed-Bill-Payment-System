@@ -174,3 +174,63 @@ export const updateBill = async (req: Request, res: Response): Promise<void> => 
   res.status(500).json({ error: "Internal server error" });
   }
   };
+
+
+  export const sponsorBill = async (req: Request, res: Response) => {
+    try {
+    const userId = req.user?.id;
+    const { billId } = req.params;
+    const { amount } = req.body;
+    
+    
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized user" });
+      return;
+    }
+    
+    if (!amount || isNaN(amount)) {
+      res.status(400).json({ error: "Amount is required and must be a number" });
+      return;
+    }
+    
+    const bill = await prisma.bill.findUnique({
+      where: { id: billId },
+      include: { sponsors: true, transactions: true }
+    });
+    
+    if (!bill) {
+      res.status(404).json({ error: "Bill not found" });
+      return;
+    }
+    
+    const isAlreadySponsor = bill.sponsors.some(sponsor => sponsor.id === userId);
+    
+    if (!isAlreadySponsor) {
+      await prisma.bill.update({
+        where: { id: billId },
+        data: {
+          sponsors: {
+            connect: { id: userId }
+          }
+        }
+      });
+    }
+    
+    const transaction = await prisma.transaction.create({
+      data: {
+        amount: parseFloat(amount),
+        status: "SUCCESS",
+        billId,
+        reference: `TXN-${Date.now()}-${Math.floor(Math.random() * 10000)}`
+      }
+    });
+    
+    res.status(201).json({
+      message: "Sponsorship successful",
+      transaction
+    });
+    } catch (error) {
+    console.error("Sponsor bill error:", error);
+    res.status(500).json({ error: "Something went wrong" });
+    }
+    };
