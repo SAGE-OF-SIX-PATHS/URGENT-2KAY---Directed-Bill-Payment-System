@@ -199,6 +199,21 @@ const sponsorBill = async (req, res) => {
                 reference: `TXN-${Date.now()}-${Math.floor(Math.random() * 10000)}`
             }
         });
+        // Sum all successful transactions for this bill
+        const allTransactions = await prisma_1.prisma.transaction.findMany({
+            where: {
+                billId,
+                status: "SUCCESS"
+            }
+        });
+        const totalSponsored = allTransactions.reduce((sum, txn) => sum + txn.amount, 0);
+        // If sponsored amount >= bill amount, mark bill as PAID
+        if (totalSponsored >= bill.amount) {
+            await prisma_1.prisma.bill.update({
+                where: { id: billId },
+                data: { status: "PAID" }
+            });
+        }
         res.status(201).json({
             message: "Sponsorship successful",
             transaction

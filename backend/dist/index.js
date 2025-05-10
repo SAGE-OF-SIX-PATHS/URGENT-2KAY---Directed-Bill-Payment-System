@@ -11,6 +11,7 @@ const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const express_session_1 = __importDefault(require("express-session"));
 const passport_1 = __importDefault(require("./service/passport"));
 const bill_routes_1 = __importDefault(require("./routes/bill.routes"));
+const sponsorship_routes_1 = __importDefault(require("./routes/sponsorship.routes"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const payment_routes_1 = __importDefault(require("./routes/payment.routes"));
 const paystack_1 = require("./config/paystack");
@@ -41,6 +42,7 @@ app.use(passport_1.default.session());
 // Routes
 app.use("/auth", auth_routes_1.default);
 app.use("/bills", bill_routes_1.default);
+app.use("/sponsorships", sponsorship_routes_1.default);
 app.use('/api/email', emailRoutes_1.emailRouter);
 app.use("/transaction", payment_routes_1.default);
 // Error Handling (should be last middleware)

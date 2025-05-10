@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes";
 import session from "express-session";
 import passport from "./service/passport";
 import billRoutes from "./routes/bill.routes";
+import sponsorshipRoutes from "./routes/sponsorship.routes";
 
 
 import bodyParser from "body-parser";
@@ -48,6 +49,7 @@ app.use(passport.session());
 // Routes
 app.use("/auth", authRoutes);
 app.use("/bills", billRoutes);
+app.use("/sponsorships", sponsorshipRoutes);
 
 app.use('/api/email', emailRouter);
 app.use("/transaction", paystackRoutes);
