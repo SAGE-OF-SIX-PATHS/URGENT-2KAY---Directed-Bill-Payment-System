@@ -7,6 +7,7 @@ import session from "express-session";
 import passport from "./service/passport";
 import billRoutes from "./routes/bill.routes";
 import sponsorshipRoutes from "./routes/sponsorship.routes";
+import requestRoutes from "./routes/request.routes"
 
 
 import bodyParser from "body-parser";
@@ -23,14 +24,14 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL,  // your frontend URL
-  credentials: true,                // allow cookies
+  origin: process.env.FRONTEND_URL,  
+  credentials: true,                
 }));
 
-// Setup session middleware BEFORE passport
+
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "super-secret", // put a real secret in .env
+    secret: process.env.SESSION_SECRET || "super-secret", 
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -50,6 +51,7 @@ app.use(passport.session());
 app.use("/auth", authRoutes);
 app.use("/bills", billRoutes);
 app.use("/sponsorships", sponsorshipRoutes);
+app.use("/request", requestRoutes)
 
 app.use('/api/email', emailRouter);
 app.use("/transaction", paystackRoutes);

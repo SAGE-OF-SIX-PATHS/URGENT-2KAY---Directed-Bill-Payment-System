@@ -22,6 +22,9 @@ model User {
   Wallet    Wallet?
 
   sponsoredBills Bill[] @relation("BillSponsors")
+
+  requestedRequests Request[] @relation("RequestedBy")
+  supportedRequests Request[] @relation("SupportedBy")
 }
 
 enum Role {
@@ -50,6 +53,7 @@ model Bill {
 
   userId     String
   providerId String?
+  requestId  String?
 
   user         User          @relation(fields: [userId], references: [id])
   provider     Provider?     @relation(fields: [providerId], references: [id])
@@ -58,6 +62,7 @@ model Bill {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  Request   Request? @relation(fields: [requestId], references: [id])
 }
 
 enum Priority {
@@ -92,4 +97,30 @@ model Wallet {
   user      User     @relation(fields: [userId], references: [id])
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Request {
+  id       String   @id @default(uuid())
+  name     String
+  notes    String?
+  priority Priority @default(MEDIUM)
+
+  status   RequestStatus @default(PENDING) // 🔧 New field
+  feedback String? // Optional field from supporter if rejected
+
+  requesterId String
+  supporterId String?
+
+  requester User  @relation("RequestedBy", fields: [requesterId], references: [id])
+  supporter User? @relation("SupportedBy", fields: [supporterId], references: [id])
+
+  bills     Bill[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

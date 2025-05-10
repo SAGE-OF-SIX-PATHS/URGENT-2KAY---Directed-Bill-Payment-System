@@ -12,6 +12,7 @@ const express_session_1 = __importDefault(require("express-session"));
 const passport_1 = __importDefault(require("./service/passport"));
 const bill_routes_1 = __importDefault(require("./routes/bill.routes"));
 const sponsorship_routes_1 = __importDefault(require("./routes/sponsorship.routes"));
+const request_routes_1 = __importDefault(require("./routes/request.routes"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const payment_routes_1 = __importDefault(require("./routes/payment.routes"));
 const paystack_1 = require("./config/paystack");
@@ -22,12 +23,11 @@ const prisma = new client_1.PrismaClient();
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
-    origin: process.env.FRONTEND_URL, // your frontend URL
-    credentials: true, // allow cookies
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
 }));
-// Setup session middleware BEFORE passport
 app.use((0, express_session_1.default)({
-    secret: process.env.SESSION_SECRET || "super-secret", // put a real secret in .env
+    secret: process.env.SESSION_SECRET || "super-secret",
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -43,6 +43,7 @@ app.use(passport_1.default.session());
 app.use("/auth", auth_routes_1.default);
 app.use("/bills", bill_routes_1.default);
 app.use("/sponsorships", sponsorship_routes_1.default);
+app.use("/request", request_routes_1.default);
 app.use('/api/email', emailRoutes_1.emailRouter);
 app.use("/transaction", payment_routes_1.default);
 // Error Handling (should be last middleware)
