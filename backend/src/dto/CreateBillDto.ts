@@ -5,30 +5,22 @@ import 'reflect-metadata';
 export class CreateBillDto {
   @IsString()
   @IsNotEmpty()
-  description: string;
+  description!: string;
 
   @IsNumber()
   @IsNotEmpty()
-  amount: number;
+  amount!: number;
 
   @IsDate()
   @Type(() => Date) // Automatically transform string to Date
   @IsNotEmpty()
-  dueDate: Date;
+  dueDate!: Date;
 
   @IsString()
   @IsNotEmpty()
-  providerId: string;
+  providerId!: string;
 
   metadata?: Record<string, any>; // dynamic fields like phoneNumber, meterNumber, etc.
-
-  constructor(description: string, amount: number, dueDate: Date, providerId: string, metadata?: Record<string, any>) {
-    this.description = description;
-    this.amount = amount;
-    this.dueDate = dueDate;
-    this.providerId = providerId;
-    this.metadata = metadata;
-  }
 }
 
 function IsOptional(): PropertyDecorator {

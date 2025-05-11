@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateBillDto } from '../dto/CreateBillDto';
 import { UpdateBillDto } from '../dto/UpdateBillDto';
 import { PrismaService } from './prisma.service';
-import { Bill } from '@prisma/client';
+// Removed unused import for 'Bill'
 
 @Injectable()
 export class BillService {
@@ -34,12 +34,17 @@ export class BillService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
+    const dueDate = new Date(dto.dueDate);
+    if (isNaN(dueDate.getTime())) {
+      throw new BadRequestException('Invalid dueDate format');
+    }
+
     // Create the bill
     return this.prisma.bill.create({
       data: {
         description: dto.description,
         amount: dto.amount,
-        dueDate: dto.dueDate,
+        dueDate, // Use the transformed Date object
         userId: id, // Use `id` here
         providerId: dto.providerId,
         metadata: {
@@ -73,7 +78,7 @@ export class BillService {
     return this.prisma.bill.update({ where: { id }, data: dto });
   }
 
-  async delete(id: string): Promise<Bill | null> {
+  async delete(id: string): Promise<any | null> {
     const bill = await this.prisma.bill.delete({
       where: { id },
     }).catch(() => null); // Return null if the bill does not exist
