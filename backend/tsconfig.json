@@ -13,7 +13,7 @@
     "rootDir": "./src",
     "resolveJsonModule": true,
     "noImplicitAny": false,
-    "typeRoots": ["./node_modules/@types"] // Add this line
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": ["src/**/*.ts", "prisma/prisma.service.ts"],
   "exclude": ["node_modules", "dist"]
