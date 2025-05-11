@@ -57,3 +57,26 @@ export const getRequests = async (filters: GetRequestsDto) => {
     },
   });
 };
+
+export const getRequestById = async (id: string) => {
+  const request = await prisma.request.findUnique({
+    where: { id },
+    include: {
+      requester: true,
+      supporter: true,
+      bills: {
+        include: {
+          provider: true,
+          transactions: true,
+          sponsors: true,
+        },
+      },
+    },
+  });
+
+  if (!request) {
+    throw new Error("Request not found");
+  }
+
+  return request;
+};

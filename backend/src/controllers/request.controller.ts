@@ -31,3 +31,13 @@ export const handleGetRequests = async (req: Request, res: Response) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
+
+export const handleGetRequestById = async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    const request = await RequestService.getRequestById(id);
+    res.status(200).json({ success: true, data: request });
+  } catch (err: any) {
+    res.status(404).json({ success: false, message: err.message });
+  }
+};
