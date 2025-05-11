@@ -74,7 +74,7 @@ enum Priority {
 enum BillStatus {
   PENDING
   APPROVED
-  FAILED
+  REJECTED
   PAID
 }
 
