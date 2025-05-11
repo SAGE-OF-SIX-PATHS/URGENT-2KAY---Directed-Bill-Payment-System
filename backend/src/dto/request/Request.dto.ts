@@ -5,4 +5,10 @@ export interface CreateRequestDto {
     supporterId?: string;
     billIds: string[]; 
   }
+
+  export interface GetRequestsDto {
+    requesterId?: string;
+    supporterId?: string;
+  }
+  
   

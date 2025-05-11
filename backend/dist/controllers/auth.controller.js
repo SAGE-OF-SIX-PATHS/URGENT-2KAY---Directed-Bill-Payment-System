@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.loginUser = exports.registerUser = void 0;
-const auth_service_1 = require("../service/auth.service");
+const auth_service_1 = require("../services/auth.service");
 const authService = new auth_service_1.AuthService();
 const registerUser = async (req, res) => {
     try {

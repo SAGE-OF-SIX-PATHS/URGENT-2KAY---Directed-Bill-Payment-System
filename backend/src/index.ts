@@ -4,7 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
 import session from "express-session";
-import passport from "./service/passport";
+import passport from "./services/passport";
 import billRoutes from "./routes/bill.routes";
 import sponsorshipRoutes from "./routes/sponsorship.routes";
 import requestRoutes from "./routes/request.routes"
@@ -48,10 +48,10 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Routes
-app.use("/auth", authRoutes);
-app.use("/bills", billRoutes);
-app.use("/sponsorships", sponsorshipRoutes);
-app.use("/request", requestRoutes)
+app.use("/api/auth", authRoutes);
+app.use("/api/bills", billRoutes);
+app.use("/api/sponsorships", sponsorshipRoutes);
+app.use("/api/requests", requestRoutes);
 
 app.use('/api/email', emailRouter);
 app.use("/transaction", paystackRoutes);

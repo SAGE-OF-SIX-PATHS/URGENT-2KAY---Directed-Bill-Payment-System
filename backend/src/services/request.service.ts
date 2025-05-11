@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma"; 
-import { CreateRequestDto } from "../dto/request/createRequest.dto";
+import { CreateRequestDto, GetRequestsDto } from "../dto/request/Request.dto";
 
 export const createRequest = async (dto: CreateRequestDto, requesterId: string) => {
   const { name, notes, priority = 'MEDIUM', supporterId, billIds } = dto;
@@ -36,4 +36,24 @@ export const createRequest = async (dto: CreateRequestDto, requesterId: string) 
   });
 
   return request;
+};
+
+
+export const getRequests = async (filters: GetRequestsDto) => {
+  const { requesterId, supporterId } = filters;
+
+  return prisma.request.findMany({
+    where: {
+      ...(requesterId && { requesterId }),
+      ...(supporterId && { supporterId }),
+    },
+    include: {
+      requester: true,
+      supporter: true,
+      bills: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
 };
