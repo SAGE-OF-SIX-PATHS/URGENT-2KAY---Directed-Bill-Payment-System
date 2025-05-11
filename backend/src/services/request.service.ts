@@ -80,3 +80,36 @@ export const getRequestById = async (id: string) => {
 
   return request;
 };
+
+
+type UpdateRequestInput = {
+  name?: string;
+  notes?: string;
+  priority?: "LOW" | "MEDIUM" | "HIGH";
+  supporterId?: string | null;
+  billIds?: string[]; // optional: replace all bills with these
+};
+
+export const updateRequest = async (id: string, data: UpdateRequestInput) => {
+  const { billIds, ...rest } = data;
+
+  const updateData: any = { ...rest };
+
+  if (billIds) {
+    updateData.bills = {
+      set: billIds.map((billId) => ({ id: billId })),
+    };
+  }
+
+  const updated = await prisma.request.update({
+    where: { id },
+    data: updateData,
+  });
+
+  return updated;
+};
+
+
+export const deleteRequest = async (id: string) => {
+  return await prisma.request.delete({ where: { id } });
+};

@@ -40,10 +40,10 @@ app.use(emailLoggerMiddleware_1.loggerMiddleware);
 app.use(passport_1.default.initialize());
 app.use(passport_1.default.session());
 // Routes
-app.use("/auth", auth_routes_1.default);
-app.use("/bills", bill_routes_1.default);
-app.use("/sponsorships", sponsorship_routes_1.default);
-app.use("/request", request_routes_1.default);
+app.use("/api/auth", auth_routes_1.default);
+app.use("/api/bills", bill_routes_1.default);
+app.use("/api/sponsorships", sponsorship_routes_1.default);
+app.use("/api/requests", request_routes_1.default);
 app.use('/api/email', emailRoutes_1.emailRouter);
 app.use("/transaction", payment_routes_1.default);
 // Error Handling (should be last middleware)

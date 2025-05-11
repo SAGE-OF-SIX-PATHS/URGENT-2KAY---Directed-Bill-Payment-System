@@ -41,3 +41,23 @@ export const handleGetRequestById = async (req: Request, res: Response) => {
     res.status(404).json({ success: false, message: err.message });
   }
 };
+
+export const handleUpdateRequest = async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    const updated = await RequestService.updateRequest(id, req.body);
+    res.status(200).json({ success: true, data: updated });
+  } catch (err: any) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+export const handleDeleteRequest = async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    await RequestService.deleteRequest(id);
+    res.status(200).json({ success: true, message: "Request deleted" });
+  } catch (err: any) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
