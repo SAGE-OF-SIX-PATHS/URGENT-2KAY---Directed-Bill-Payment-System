@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as RequestService from "../services/request.service";
+import {prisma} from "../lib/prisma"
 
 export const handleCreateRequest = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -115,3 +116,33 @@ export const handleUpdateRequestStatus = async (req: Request, res: Response): Pr
       res.status(500).json({ message: "Internal server error" });
       }
       };
+
+      export const getRequestPublicDetails = async (req: Request, res: Response): Promise<void> => {
+        const { publicLinkId } = req.params;
+        
+        try {
+        const request = await prisma.request.findUnique({
+        where: { publicLinkId },
+        include: {
+        requester: { select: { id: true, name: true } },
+        bills: {
+        include: {
+        provider: true,
+        transactions: true,
+        },
+        },
+        },
+        });
+        
+        
+        if (!request) {
+          res.status(404).json({ message: "Request not found" });
+          return;
+        }
+        
+        res.json(request);
+        } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+        }
+        };

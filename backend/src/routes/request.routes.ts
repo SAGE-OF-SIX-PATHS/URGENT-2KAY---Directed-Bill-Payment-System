@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { handleCreateRequest, handleGetRequests, handleGetRequestById, 
     handleUpdateRequest, handleDeleteRequest,handleUpdateRequestStatus,
-    handleGetAllRequests, getRequestDetails} from "../controllers/request.controller";
+    handleGetAllRequests, getRequestDetails, getRequestPublicDetails} from "../controllers/request.controller";
 import { isAuthenticated } from "../middlewares/auth"; 
 
 const router = Router();
@@ -14,6 +14,7 @@ router.delete("/:id", isAuthenticated, handleDeleteRequest);
 router.patch("/:id/status", isAuthenticated, handleUpdateRequestStatus);
 router.get("/", isAuthenticated , handleGetAllRequests);
 router.get('/:id/details', isAuthenticated , getRequestDetails);
+router.get('/public/:publicLinkId', getRequestPublicDetails); 
 
 
 

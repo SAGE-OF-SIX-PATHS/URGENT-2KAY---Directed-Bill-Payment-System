@@ -1,6 +1,8 @@
 import { prisma } from "../lib/prisma"; 
 import { CreateRequestDto, GetRequestsDto } from "../dto/request/Request.dto";
 
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5000";
+
 export const createRequest = async (dto: CreateRequestDto, requesterId: string) => {
   const { name, notes,  supporterId, billIds } = dto;
 
@@ -34,7 +36,12 @@ export const createRequest = async (dto: CreateRequestDto, requesterId: string) 
       },
     });
 
-    return request;
+    const publicLink = `${FRONTEND_URL}/api/requests/public/${request.publicLinkId}`;
+
+    return {
+      ...request,
+      publicLink,
+    };                       
 };
 
 
