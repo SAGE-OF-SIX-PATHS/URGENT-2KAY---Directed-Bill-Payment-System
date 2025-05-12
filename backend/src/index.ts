@@ -14,6 +14,9 @@ import { emailRouter } from "./routes/emailRoutes";
 import { loggerMiddleware } from './middlewares/emailLoggerMiddleware';
 import { errorHandler } from './middlewares/emailErrorMiddleware';
 
+// Blockchain routes
+import blockchainRoutes from './routes/blockchain.routes';
+
 const prisma = new PrismaClient();
 
 dotenv.config();
@@ -53,13 +56,23 @@ app.use(bodyParser.json());
 app.use(express.json());
 app.use(loggerMiddleware);
 
-app.use(passport.initialize());
-app.use(passport.session());
+// Only initialize passport if Google OAuth credentials are available
+const hasGoogleCredentials = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
+if (hasGoogleCredentials) {
+  app.use(passport.initialize());
+  app.use(passport.session());
+  app.use("/auth", authRoutes);
+} else {
+  console.warn("Google OAuth credentials not found. Authentication routes will be disabled.");
+}
 
 // Routes
-app.use("/auth", authRoutes);
+if (hasGoogleCredentials) {
+  app.use("/auth", authRoutes);
+}
 app.use('/api/email', emailRouter);
 app.use("/transaction", paystackRoutes);
+app.use("/blockchain", blockchainRoutes);
 
 // Error Handling (should be last middleware)
 app.use(errorHandler);

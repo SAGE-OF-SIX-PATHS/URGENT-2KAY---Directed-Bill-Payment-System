@@ -1,0 +1,329 @@
+import { ethers } from 'ethers';
+import { PrismaClient } from '@prisma/client';
+import { 
+  BLOCKCHAIN_CONFIG, 
+  U2K_TOKEN_ABI, 
+  BILL_PAYMENT_SYSTEM_ABI 
+} from '../config/blockchain';
+
+const prisma = new PrismaClient();
+
+export class BlockchainService {
+  private provider: ethers.providers.JsonRpcProvider;
+  private wallet: ethers.Wallet;
+  private tokenContract: ethers.Contract;
+  private billPaymentContract: ethers.Contract;
+
+  constructor() {
+    this.provider = new ethers.providers.JsonRpcProvider(BLOCKCHAIN_CONFIG.RPC_URL);
+    
+    if (!BLOCKCHAIN_CONFIG.PRIVATE_KEY) {
+      throw new Error('Blockchain private key not configured');
+    }
+
+    this.wallet = new ethers.Wallet(BLOCKCHAIN_CONFIG.PRIVATE_KEY, this.provider);
+    
+    if (!BLOCKCHAIN_CONFIG.TOKEN_CONTRACT_ADDRESS) {
+      throw new Error('Token contract address not configured');
+    }
+    
+    if (!BLOCKCHAIN_CONFIG.BILL_PAYMENT_CONTRACT_ADDRESS) {
+      throw new Error('Bill payment contract address not configured');
+    }
+
+    this.tokenContract = new ethers.Contract(
+      BLOCKCHAIN_CONFIG.TOKEN_CONTRACT_ADDRESS,
+      U2K_TOKEN_ABI,
+      this.wallet
+    );
+
+    this.billPaymentContract = new ethers.Contract(
+      BLOCKCHAIN_CONFIG.BILL_PAYMENT_CONTRACT_ADDRESS,
+      BILL_PAYMENT_SYSTEM_ABI,
+      this.wallet
+    );
+  }
+
+  /**
+   * Create a new CryptoWallet for a user
+   */
+  async createUserWallet(userId: string): Promise<any> {
+    // Check if the user already has a wallet
+    const existingWallet = await prisma.cryptoWallet.findUnique({
+      where: { userId }
+    });
+
+    if (existingWallet) {
+      return existingWallet;
+    }
+
+    // Create a new random wallet
+    const newWallet = ethers.Wallet.createRandom();
+
+    // Store the wallet in the database (do not store private key in production!)
+    const wallet = await prisma.cryptoWallet.create({
+      data: {
+        userId,
+        address: newWallet.address,
+      }
+    });
+
+    return {
+      ...wallet,
+      // Only return these during wallet creation and never store in DB
+      privateKey: newWallet.privateKey,
+      mnemonic: newWallet.mnemonic?.phrase
+    };
+  }
+
+  /**
+   * Connect an existing wallet to a user
+   */
+  async connectExistingWallet(userId: string, walletAddress: string): Promise<any> {
+    // Check if the user already has a wallet
+    const existingUserWallet = await prisma.cryptoWallet.findUnique({
+      where: { userId }
+    });
+
+    if (existingUserWallet) {
+      throw new Error('User already has a wallet connected');
+    }
+
+    // Check if the wallet address is already in use
+    const existingWallet = await prisma.cryptoWallet.findUnique({
+      where: { address: walletAddress }
+    });
+
+    if (existingWallet) {
+      throw new Error('Wallet address is already connected to another user');
+    }
+
+    // Verify the wallet address is valid
+    if (!ethers.utils.isAddress(walletAddress)) {
+      throw new Error('Invalid Ethereum wallet address');
+    }
+
+    // Store the wallet in the database
+    const wallet = await prisma.cryptoWallet.create({
+      data: {
+        userId,
+        address: walletAddress,
+      }
+    });
+
+    return wallet;
+  }
+
+  /**
+   * Get token balance for an address
+   */
+  async getTokenBalance(address: string): Promise<string> {
+    const balance = await this.tokenContract.balanceOf(address);
+    return ethers.utils.formatUnits(balance, 18); // Assuming token has 18 decimals
+  }
+
+  /**
+   * Create a bill payment request on the blockchain
+   */
+  async createBillRequest(
+    billId: string,
+    beneficiaryAddress: string,
+    sponsorAddress: string,
+    paymentDestination: string,
+    amount: number,
+    description: string
+  ): Promise<string> {
+    try {
+      // Convert amount to wei (assuming 18 decimals)
+      const amountInWei = ethers.utils.parseUnits(amount.toString(), 18);
+
+      // Create transaction on blockchain
+      const tx = await this.billPaymentContract.createBill(
+        sponsorAddress,
+        paymentDestination,
+        amountInWei,
+        description
+      );
+
+      // Wait for transaction to be mined
+      const receipt = await tx.wait();
+
+      // Find the BillCreated event
+      const billCreatedEvent = receipt.events?.find(
+        (event: ethers.Event) => event.event === 'BillCreated'
+      );
+
+      if (!billCreatedEvent) {
+        throw new Error('Bill creation event not found');
+      }
+
+      // Get the blockchain bill ID
+      const blockchainBillId = billCreatedEvent.args.billId.toString();
+
+      // Store in our database
+      await prisma.blockchainRequest.create({
+        data: {
+          billId,
+          transactionHash: receipt.transactionHash,
+          status: 'CONFIRMED',
+          amount,
+          cryptoAmount: Number(ethers.utils.formatUnits(amountInWei, 18)),
+          paymentType: 'NATIVE'
+        }
+      });
+
+      // Return the transaction hash
+      return receipt.transactionHash;
+    } catch (error) {
+      console.error('Error creating bill on blockchain:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Pay bill with native tokens (ETH)
+   */
+  async payBillWithNative(
+    blockchainBillId: string,
+    sponsorPrivateKey: string,
+    amount: string
+  ): Promise<string> {
+    try {
+      // Create a wallet for the sponsor using their private key
+      const sponsorWallet = new ethers.Wallet(sponsorPrivateKey, this.provider);
+      
+      // Connect the contract with the sponsor's wallet
+      const connectedContract = this.billPaymentContract.connect(sponsorWallet);
+
+      // Pay the bill with native tokens (ETH)
+      const tx = await connectedContract.payBillWithNative(blockchainBillId, {
+        value: ethers.utils.parseEther(amount)
+      });
+
+      // Wait for transaction to be mined
+      const receipt = await tx.wait();
+
+      return receipt.transactionHash;
+    } catch (error) {
+      console.error('Error paying bill with native tokens:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Pay bill with U2K tokens
+   */
+  async payBillWithU2K(
+    blockchainBillId: string,
+    sponsorPrivateKey: string
+  ): Promise<string> {
+    try {
+      // Create a wallet for the sponsor using their private key
+      const sponsorWallet = new ethers.Wallet(sponsorPrivateKey, this.provider);
+      
+      // Connect the contracts with the sponsor's wallet
+      const connectedTokenContract = this.tokenContract.connect(sponsorWallet);
+      const connectedBillContract = this.billPaymentContract.connect(sponsorWallet);
+
+      // First approve the bill payment contract to spend tokens
+      const bill = await connectedBillContract.getBill(blockchainBillId);
+      const amount = bill.amount;
+
+      // Approve tokens
+      const approveTx = await connectedTokenContract.approve(
+        BLOCKCHAIN_CONFIG.BILL_PAYMENT_CONTRACT_ADDRESS,
+        amount
+      );
+      await approveTx.wait();
+
+      // Pay the bill with U2K tokens
+      const tx = await connectedBillContract.payBillWithU2K(blockchainBillId);
+
+      // Wait for transaction to be mined
+      const receipt = await tx.wait();
+
+      return receipt.transactionHash;
+    } catch (error) {
+      console.error('Error paying bill with U2K tokens:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reject a bill on the blockchain
+   */
+  async rejectBill(
+    blockchainBillId: string,
+    sponsorPrivateKey: string
+  ): Promise<string> {
+    try {
+      // Create a wallet for the sponsor using their private key
+      const sponsorWallet = new ethers.Wallet(sponsorPrivateKey, this.provider);
+      
+      // Connect the contract with the sponsor's wallet
+      const connectedContract = this.billPaymentContract.connect(sponsorWallet);
+
+      // Reject the bill
+      const tx = await connectedContract.rejectBill(blockchainBillId);
+
+      // Wait for transaction to be mined
+      const receipt = await tx.wait();
+
+      return receipt.transactionHash;
+    } catch (error) {
+      console.error('Error rejecting bill:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get bill details from the blockchain
+   */
+  async getBillDetails(blockchainBillId: string): Promise<any> {
+    try {
+      const bill = await this.billPaymentContract.getBill(blockchainBillId);
+      return {
+        id: bill.id.toString(),
+        beneficiary: bill.beneficiary,
+        paymentDestination: bill.paymentDestination,
+        sponsor: bill.sponsor,
+        amount: ethers.utils.formatUnits(bill.amount, 18),
+        description: bill.description,
+        status: ['PENDING', 'PAID', 'REJECTED'][bill.status], // Map numeric status to string
+        createdAt: new Date(bill.createdAt.toNumber() * 1000),
+        paidAt: bill.paidAt.toNumber() > 0 ? new Date(bill.paidAt.toNumber() * 1000) : null
+      };
+    } catch (error) {
+      console.error('Error getting bill details:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get bills for a beneficiary
+   */
+  async getBeneficiaryBills(beneficiaryAddress: string): Promise<string[]> {
+    try {
+      const bills = await this.billPaymentContract.getBeneficiaryBills(beneficiaryAddress);
+      return bills.map((id: ethers.BigNumber) => id.toString());
+    } catch (error) {
+      console.error('Error getting beneficiary bills:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get bills for a sponsor
+   */
+  async getSponsorBills(sponsorAddress: string): Promise<string[]> {
+    try {
+      const bills = await this.billPaymentContract.getSponsorBills(sponsorAddress);
+      return bills.map((id: ethers.BigNumber) => id.toString());
+    } catch (error) {
+      console.error('Error getting sponsor bills:', error);
+      throw error;
+    }
+  }
+}
+
+export default new BlockchainService(); 
