@@ -2,20 +2,7 @@ import { prisma } from "../lib/prisma";
 import { CreateRequestDto, GetRequestsDto } from "../dto/request/Request.dto";
 
 export const createRequest = async (dto: CreateRequestDto, requesterId: string) => {
-  const { name, notes, priority = 'MEDIUM', supporterId, billIds } = dto;
-
-  // Fetch bills and ensure they belong to the user and are not already part of a request
-  const bills = await prisma.bill.findMany({
-    where: {
-      id: { in: billIds },
-      userId: requesterId,
-      requestId: null,
-    },
-  });
-
-  if (bills.length !== billIds.length) {
-    throw new Error("Invalid or already-requested bills");
-  }
+  const { name, notes, priority = 'MEDIUM', supporterId} = dto;
 
   // Create the request (bundle)
   const request = await prisma.request.create({
@@ -24,10 +11,7 @@ export const createRequest = async (dto: CreateRequestDto, requesterId: string) 
       notes,
       priority,
       requesterId,
-      supporterId,
-      bills: {
-        connect: billIds.map(id => ({ id })),
-      },
+      supporterId
     },
     include: {
       bills: true,

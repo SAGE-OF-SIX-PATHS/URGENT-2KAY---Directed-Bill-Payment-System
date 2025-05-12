@@ -3,7 +3,6 @@ export interface CreateRequestDto {
     notes?: string;
     priority?: 'LOW' | 'MEDIUM' | 'HIGH';
     supporterId?: string;
-    billIds: string[]; 
   }
 
   export interface GetRequestsDto {
@@ -11,4 +10,5 @@ export interface CreateRequestDto {
     supporterId?: string;
   }
   
-  
+
+ 

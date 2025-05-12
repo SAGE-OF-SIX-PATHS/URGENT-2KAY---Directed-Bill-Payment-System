@@ -2,6 +2,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { Provider } from "@prisma/client"; // Import Provider type
+import { CreateBillDto } from '../dto/Bill/bill.dto'
 
 export const createBill = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -12,37 +13,45 @@ export const createBill = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const { billName, type, amount, note, dueDate, priority, providerId } = req.body;
+    const dto: CreateBillDto = req.body;
 
     // Manual input validation
-    if (!billName || !type || !amount) {
-      res.status(400).json({
-        error: "billName, type, and amount are required",
-      });
-      return;
-    }
+    // Validate required fields
+if (!dto.requestId) {
+  res.status(400).json({ message: 'requestId is required' });
+  return 
+}
 
-    // Optional: Validate provider exists
-    let provider: Provider | null = null;
-    if (providerId) {
-      provider = await prisma.provider.findUnique({ where: { id: providerId } });
-      if (!provider) {
-        res.status(404).json({ error: "Invalid provider ID" });
-        return;
-      }
-    }
+// Step 1: Check if the request exists
+const request = await prisma.request.findUnique({
+  where: { id: dto.requestId },
+})
 
-    const bill = await prisma.bill.create({
-      data: {
-        billName,
-        type,
-        amount: parseFloat(amount),
-        note,
-        dueDate: dueDate ? new Date(dueDate) : undefined,
-        priority: priority || "MEDIUM",
-        userId,
-        providerId: provider?.id,
-      },
+if (!request) {
+  res.status(404).json({ message: 'Request (bundle) not found' });
+  return 
+}
+
+// Step 2: Ensure the request belongs to the authenticated user
+if (request.requesterId !== userId) {
+  res.status(403).json({ message: 'You do not own this request' });
+  return 
+}
+
+
+   // Step 3: Create the bill under that request
+const bill = await prisma.bill.create({
+  data: {
+    billName: dto.billName,
+    type: dto.type,
+    note: dto.note,
+    amount: dto.amount,
+    priority: dto.priority || 'MEDIUM',
+    dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+    userId: userId,
+    providerId: dto.providerId,
+    requestId: dto.requestId,
+  },
     });
 
     res.status(201).json({ message: "Bill created successfully", bill });
