@@ -13,7 +13,8 @@ export class ProvidersService {
     return this.prisma.provider.create({
       data: {
         name: createProviderDto.name,
-        contactInfo: createProviderDto.contactInfo,
+        type: createProviderDto.type, // Ensure 'type' is included in CreateProviderDto
+        // contactInfo: createProviderDto.contactInfo,
       },
     });
   }

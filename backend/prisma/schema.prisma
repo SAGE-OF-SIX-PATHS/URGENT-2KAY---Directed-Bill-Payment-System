@@ -11,21 +11,21 @@ datasource db {
 }
 
 model User {
-  id           String                @id @default(uuid())
-  email        String                @unique
-  password     String
-  name         String
-  phone        String?
-  googleId     String?               @unique
-  role         Role                  @default(BENEFACTEE)
-  payments     Payment[]
-  activities   TransactionActivity[]
-  bills        Bill[]
-  requests     Request[]             @relation("RequestedBy")
-  supports     Request[]             @relation("SupportedBy")
-  wallet       Wallet?
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
+  id         String                @id @default(cuid())
+  email      String                @unique
+  password   String
+  name       String
+  phone      String? // Added phone field as optional
+  googleId   String?               @unique
+  role       Role                  @default(BENEFACTEE)
+  payments   Payment[]
+  activities TransactionActivity[]
+  bills      Bill[]
+  requests   Request[]             @relation("RequestedBy")
+  supports   Request[]             @relation("SupportedBy")
+  wallet     Wallet?
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
 }
 
 enum Role {
@@ -34,36 +34,23 @@ enum Role {
 }
 
 model Provider {
-  id          String   @id @default(uuid())
-  name        String
-  verified    Boolean  @default(false)
-  bills       Bill[]
-  contactInfo String?  // Optional field for provider contact information
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  bills     Bill[] // A provider can have multiple bills
 }
 
 model Bill {
-  id            String        @id @default(uuid())
-  title         String?
+  id            String         @id @default(uuid())
   description   String
   amount        Float
-  status        BillStatus    @default(PENDING)
-  type          BillType?
-  category      String?
-  dueDate       DateTime
-  paymentMethod String?
-  isPaid        Boolean       @default(false)
-  userId        String
-  providerId    String
-  requestId     String?
-  user          User          @relation(fields: [userId], references: [id])
-  provider      Provider      @relation(fields: [providerId], references: [id])
-  request       Request?      @relation(fields: [requestId], references: [id])
-  transactions  Transaction[]
-  metadata      BillMetadata[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  isPaid        Boolean        @default(false)
+  paymentStatus String         @default("PENDING")
+  metadata      Json           // To store payment references or other metadata
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 enum BillStatus {
@@ -94,26 +81,26 @@ model Payment {
 }
 
 model BillMetadata {
-  id        String   @id @default(uuid())
-  billId    String
-  key       String
-  value     String
+  id     String @id @default(uuid())
+  billId String
+  key    String
+  value  String
 
-  bill      Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  bill Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
 }
 
 model Request {
-  id          String   @id @default(uuid())
+  id            String   @id @default(cuid()) // Unique ID for the request
+  billId        String   // Links the request to a specific bill
   notes       String?
   priority    String?
-  requesterId String
-  supporterId String
-  bills       Bill[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now())
+  benefactorId  String   // The ID of the benefactor (sponsor)
+  status        String   @default("PENDING") // Status of the request (PENDING, APPROVED, REJECTED)
+  createdAt     DateTime @default(now())     // Timestamp for when the request was created
+  updatedAt     DateTime @updatedAt          // Timestamp for when the request was last updated
 
-  requester   User     @relation("RequestedBy", fields: [requesterId], references: [id])
-  supporter   User     @relation("SupportedBy", fields: [supporterId], references: [id])
+  bill          Bill     @relation(fields: [billId], references: [id]) // Relation to the Bill model
+  benefactor    User     @relation(fields: [benefactorId], references: [id]) // Relation to the User model
 }
 
 model Wallet {

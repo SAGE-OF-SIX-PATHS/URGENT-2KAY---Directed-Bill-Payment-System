@@ -14,6 +14,7 @@ export const findOrCreateUser = async (profile: any, role: string) => {
         name: profile.displayName,
         googleId,
         role: role.toUpperCase() as "BENEFACTOR" | "BENEFACTEE",
+        password: "defaultPassword123", // Replace with a secure default password or generate one dynamically
       },
     });
   }

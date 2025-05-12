@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsDate, IsNotEmpty } from 'class-validator';
+import { IsString, IsNumber, IsDate, IsNotEmpty, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import 'reflect-metadata';
 
@@ -16,16 +16,13 @@ export class CreateBillDto {
   @IsNotEmpty()
   dueDate!: Date;
 
-  @IsString()
+  // @IsString()
+  // @IsOptional() // Mark providerId as optional if it is not always required
+  // providerId?: string;
+
+  @IsOptional() // Explicitly mark metadata as optional
+  metadata?: Record<string, any>; // Dynamic fields like phoneNumber, meterNumber, etc.
+
   @IsNotEmpty()
   providerId!: string;
-
-  metadata?: Record<string, any>; // dynamic fields like phoneNumber, meterNumber, etc.
-}
-
-function IsOptional(): PropertyDecorator {
-  return function (target: Object, propertyKey: string | symbol): void {
-    // Add metadata to mark the property as optional
-    Reflect.defineMetadata('isOptional', true, target, propertyKey);
-  };
 }

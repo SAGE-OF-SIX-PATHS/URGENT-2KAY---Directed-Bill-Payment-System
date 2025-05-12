@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Ignore build artifacts
 /dist
 
@@ -10,7 +9,6 @@
 
 # Ignore log files
 *.logs
-=======
           ``# Environment variables
 .env
 .env.local
@@ -19,16 +17,16 @@
 .env.production
 
 # Dependencies
-node_modules/
+# node_modules/
 /.pnp
 .pnp.js
 
 # Testing
 /coverage
 
-# Production
-/build
-/dist
+# # Production
+# /build
+# /dist
 
 # Logs 
 npm-debug.log*
@@ -52,4 +50,3 @@ yarn-error.log*
 .Trashes
 ehthumbs.db
 Thumbs.db
->>>>>>> 66869fd1d10ce94537b5404b9cc4bd65179af9b8

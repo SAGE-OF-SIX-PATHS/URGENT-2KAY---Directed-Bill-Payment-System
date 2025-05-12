@@ -3,9 +3,9 @@ import { IsString, IsNotEmpty } from 'class-validator';
 export class CreateProviderDto {
   @IsString()
   @IsNotEmpty()
-  name!: string;
+  name!: string; // Name of the provider (e.g., "MTN", "Ikeja Electric")
 
   @IsString()
   @IsNotEmpty()
-  contactInfo!: string; // Add this property
+  type!: string; // Type of provider (e.g., "AIRTIME", "ELECTRICITY")
 }

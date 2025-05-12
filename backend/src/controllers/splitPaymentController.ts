@@ -1,6 +1,6 @@
 // src/controllers/splitPaymentController.ts
 
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import axios from "axios";
 import { PAYSTACK_SECRET_KEY } from "../config/paystack";
 
@@ -14,7 +14,7 @@ const paystackAPI = axios.create({
 });
 
 // Step 1: Create subaccounts (you can do this in advance and store their codes in DB)
-export const createSubaccount = async (req: Request, res: Response) => {
+export const createSubaccount = async (req: Request, res: Response, next: NextFunction) => {
           const { business_name, bank_code, account_number, percentage_charge } = req.body;
 
           try {
@@ -29,6 +29,7 @@ export const createSubaccount = async (req: Request, res: Response) => {
           } catch (error: any) {
                     console.error("Subaccount Error:", error.response?.data || error.message);
                     res.status(500).json({ error: "Failed to create subaccount" });
+                    next(error); // Pass errors to the Express error handler
           }
 };
 

@@ -6,8 +6,8 @@ import { generateToken } from "../utils/jwt";
 const router = Router();
 const FRONTEND_URLS = (process.env.FRONTEND_URL || "https://web-dash-spark.vercel.app").split(",");
 
-router.post("/register", registerUser);
-router.post("/login", loginUser);
+router.post("/register", (req, res, next) => registerUser(req as any, res).catch(next));
+router.post("/login", (req, res, next) => loginUser(req as any, res).catch(next));
 
 // Start Google OAuth login
 router.get("/google", (req, res, next) => {

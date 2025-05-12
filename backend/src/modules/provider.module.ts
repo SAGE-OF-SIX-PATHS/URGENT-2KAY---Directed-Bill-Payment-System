@@ -8,6 +8,6 @@ import { PrismaService } from '../service/prisma.service'; // Make sure Prisma s
   imports: [],
   controllers: [ProviderController],
   providers: [ProvidersService, PrismaService], // Ensure ProvidersService is added to the providers
-  exports: [ProvidersService],
+  exports: [ProvidersService], // Export ProvidersService if needed in other modules
 })
 export class ProviderModule {}

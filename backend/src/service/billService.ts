@@ -1,15 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateBillDto } from '../dto/CreateBillDto';
 import { UpdateBillDto } from '../dto/UpdateBillDto';
-import { PrismaService } from './prisma.service';
-// Removed unused import for 'Bill'
+import { PrismaService } from '../service/prisma.service';
 
 @Injectable()
 export class BillService {
-  // Removed duplicate delete method
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async create(id: string, dto: CreateBillDto): Promise<any> {
+  async create(userId: string, dto: CreateBillDto): Promise<any> {
     console.log('dueDate (before Prisma):', dto.dueDate);
 
     // Check if the provider exists
@@ -27,11 +25,11 @@ export class BillService {
 
     // Check if the user exists
     const user = await this.prisma.user.findUnique({
-      where: { id }, // Use `id` instead of `userId`
+      where: { id: userId },
     });
 
     if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+      throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
     const dueDate = new Date(dto.dueDate);
@@ -45,8 +43,9 @@ export class BillService {
         description: dto.description,
         amount: dto.amount,
         dueDate, // Use the transformed Date object
-        userId: id, // Use `id` here
-        providerId: dto.providerId,
+        userId: userId, // Use `userId` here
+        providerId: dto.providerId || '',
+        paymentStatus: 'PENDING', // Add a default paymentStatus value
         metadata: {
           create: Object.entries(dto.metadata || {}).map(([key, value]) => ({
             key,

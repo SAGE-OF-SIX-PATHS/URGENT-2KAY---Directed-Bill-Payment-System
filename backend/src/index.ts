@@ -1,20 +1,18 @@
-<<<<<<< HEAD
 import { ValidationPipe } from '@nestjs/common'; 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './modules/app.module';
 
-const PORT = process.env.PORT || 3000;
+const SERVER_PORT = process.env.PORT || 3000;
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe()); // Global validation for DTOs
   app.enableShutdownHooks(); // Handle graceful shutdown
-  await app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+  await app.listen(SERVER_PORT, () => {
+    console.log(`🚀 Server running on port ${SERVER_PORT}`);
   });
 }
 bootstrap();
-=======
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 import cors from "cors";
@@ -28,8 +26,9 @@ import bodyParser from "body-parser";
 import paystackRoutes from "./routes/payment.routes";
 import { PORT } from "./config/paystack";
 import { emailRouter } from "./routes/emailRoutes";
-import { loggerMiddleware } from './middlewares/emailLoggerMiddleware';
+// import { loggerMiddleware } from './middlewares/emailLoggerMiddleware';
 import { errorHandler } from './middlewares/emailErrorMiddleware';
+import { LoggerMiddleware } from './middlewares/emailLoggerMiddleware';
 
 const prisma = new PrismaClient();
 
@@ -68,7 +67,14 @@ app.use(
 
 app.use(bodyParser.json());
 app.use(express.json());
-app.use(loggerMiddleware);
+
+// Instantiate the middleware
+const loggerMiddleware = new LoggerMiddleware();
+
+// Use the middleware
+import { Request as ExpressRequest, Response, NextFunction } from "express";
+
+app.use((req, res, next) => loggerMiddleware.use(req as ExpressRequest, res as Response, next as NextFunction));
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -79,7 +85,7 @@ app.use('/api/email', emailRouter);
 app.use("/transaction", paystackRoutes);
 
 // Error Handling (should be last middleware)
-app.use(errorHandler);
+app.use((err, req, res, next) => errorHandler(err, req, res, next));
 
 // Health check route
 app.get("/", (_req, res) => {
@@ -101,4 +107,3 @@ async function startServer() {
 }
 
 startServer();
->>>>>>> 66869fd1d10ce94537b5404b9cc4bd65179af9b8
