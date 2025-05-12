@@ -61,3 +61,38 @@ export const handleDeleteRequest = async (req: Request, res: Response) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
+
+
+export const handleUpdateRequestStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const supporterId = req.user.id;
+    const requestId = req.params.id;
+    const { status } = req.body;
+
+    if (!["APPROVED", "REJECTED"].includes(status)) {
+      res.status(400).json({ message: "Invalid status" });
+      return;
+    }
+
+    const updated = await RequestService.updateRequestStatus(requestId, supporterId, status);
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+
+  export const handleGetAllRequests = async (req: Request, res: Response) => {
+    try {
+    const filters = req.query;
+    const data = await RequestService.getAllRequests(filters);
+    res.json({ success: true, data });
+    } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+    }
+    };

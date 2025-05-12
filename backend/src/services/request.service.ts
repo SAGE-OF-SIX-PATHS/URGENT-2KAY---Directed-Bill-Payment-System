@@ -113,3 +113,41 @@ export const updateRequest = async (id: string, data: UpdateRequestInput) => {
 export const deleteRequest = async (id: string) => {
   return await prisma.request.delete({ where: { id } });
 };
+
+
+export const updateRequestStatus = async (
+  requestId: string,
+  supporterId: string,
+  status: "APPROVED" | "REJECTED"
+  ) => {
+  const request = await prisma.request.findUnique({ where: { id: requestId } });
+  if (!request) throw new Error("Request not found");
+  if (request.supporterId !== supporterId) throw new Error("Unauthorized action");
+  
+  return await prisma.request.update({
+  where: { id: requestId },
+  data: {
+  status,
+  },
+  });
+  };
+
+  export const getAllRequests = async (filters: any = {}) => {
+    const { status, priority, supporterId } = filters;
+    
+    return await prisma.request.findMany({
+    where: {
+    ...(status && { status }),
+    ...(priority && { priority }),
+    ...(supporterId && { supporterId }),
+    },
+    include: {
+    requester: true,
+    supporter: true,
+    bills: true,
+    },
+    orderBy: {
+    createdAt: "desc",
+    },
+    });
+    };
