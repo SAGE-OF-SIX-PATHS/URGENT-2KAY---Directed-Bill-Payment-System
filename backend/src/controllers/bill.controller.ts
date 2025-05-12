@@ -6,7 +6,7 @@ import { CreateBillDto } from '../dto/Bill/bill.dto'
 
 export const createBill = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.id; // `req.user` is set by auth middleware
+    const userId = req.user?.id;
 
     if (!userId) {
       res.status(401).json({ error: "Unauthorized user" });
@@ -14,46 +14,41 @@ export const createBill = async (req: Request, res: Response): Promise<void> => 
     }
 
     const dto: CreateBillDto = req.body;
+    let requestId: string | undefined = undefined;
 
-    // Manual input validation
-    // Validate required fields
-if (!dto.requestId) {
-  res.status(400).json({ message: 'requestId is required' });
-  return 
-}
+    // Optional: Validate and authorize requestId if provided
+    if (dto.requestId) {
+      const request = await prisma.request.findUnique({
+        where: { id: dto.requestId },
+      });
 
-// Step 1: Check if the request exists
-const request = await prisma.request.findUnique({
-  where: { id: dto.requestId },
-})
+      if (!request) {
+        res.status(404).json({ message: 'Request (bundle) not found' });
+        return;
+      }
 
-if (!request) {
-  res.status(404).json({ message: 'Request (bundle) not found' });
-  return 
-}
+      if (request.requesterId !== userId) {
+        res.status(403).json({ message: 'You do not own this request' });
+        return;
+      }
 
-// Step 2: Ensure the request belongs to the authenticated user
-if (request.requesterId !== userId) {
-  res.status(403).json({ message: 'You do not own this request' });
-  return 
-}
+      requestId = dto.requestId;
+      console.log("Incoming requestId:", requestId);
+    }
 
-console.log("Incoming requestId:", dto.requestId);
-
-
-   // Step 3: Create the bill under that request
-const bill = await prisma.bill.create({
-  data: {
-    billName: dto.billName,
-    type: dto.type,
-    note: dto.note,
-    amount: dto.amount,
-    priority: dto.priority || 'MEDIUM',
-    dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-    userId: userId,
-    providerId: dto.providerId,
-    requestId: dto.requestId,
-  },
+    // Create the bill, with or without a requestId
+    const bill = await prisma.bill.create({
+      data: {
+        billName: dto.billName,
+        type: dto.type,
+        note: dto.note,
+        amount: dto.amount,
+        priority: dto.priority || 'MEDIUM',
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+        userId: userId,
+        providerId: dto.providerId,
+        requestId: requestId,
+      },
     });
 
     res.status(201).json({ message: "Bill created successfully", bill });
@@ -62,6 +57,7 @@ const bill = await prisma.bill.create({
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 // GET /bills — get all bills for logged-in user
 export const getAllBills = async (req: Request, res: Response): Promise<void> => {
