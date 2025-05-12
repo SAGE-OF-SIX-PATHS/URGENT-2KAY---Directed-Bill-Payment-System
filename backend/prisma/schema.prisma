@@ -33,12 +33,14 @@ enum Role {
 }
 
 model Provider {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  verified  Boolean  @default(false)
-  bills     Bill[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  name          String   @unique
+  email         String?  @unique
+  accountNumber String?
+  verified      Boolean  @default(false)
+  bills         Bill[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Bill {
@@ -106,10 +108,9 @@ enum RequestStatus {
 }
 
 model Request {
-  id       String   @id @default(uuid())
-  name     String
-  notes    String?
-  priority Priority @default(MEDIUM)
+  id    String  @id @default(uuid())
+  name  String
+  notes String?
 
   status   RequestStatus @default(PENDING) // 🔧 New field
   feedback String? // Optional field from supporter if rejected

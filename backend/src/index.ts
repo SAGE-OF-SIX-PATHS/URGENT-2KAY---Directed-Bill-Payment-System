@@ -8,6 +8,7 @@ import passport from "./services/passport";
 import billRoutes from "./routes/bill.routes";
 import sponsorshipRoutes from "./routes/sponsorship.routes";
 import requestRoutes from "./routes/request.routes"
+import providerRoutes from "./routes/provider.route";
 
 
 import bodyParser from "body-parser";
@@ -52,6 +53,7 @@ app.use("/auth", authRoutes);
 app.use("/api/bills", billRoutes);
 app.use("/api/sponsorships", sponsorshipRoutes);
 app.use("/api/requests", requestRoutes);
+app.use("/api", providerRoutes);
 
 app.use('/api/email', emailRouter);
 app.use("/transaction", paystackRoutes);
