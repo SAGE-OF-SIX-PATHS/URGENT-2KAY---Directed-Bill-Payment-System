@@ -135,3 +135,39 @@ export const updateRequestStatus = async (
     },
     });
     };
+
+    export const fetchRequestWithBills = async (requestId: string) => {
+      const request = await prisma.request.findUnique({
+      where: { id: requestId },
+      include: {
+      requester: {
+      select: { id: true, name: true, email: true },
+      },
+      supporter: {
+      select: { id: true, name: true, email: true },
+      },
+      bills: {
+      include: {
+      provider: { select: { id: true, name: true } },
+      transactions: true,
+      },
+      },
+      },
+      });
+      
+      if (!request) return null;
+      
+      // 🧮 Add totalAmount and status summary
+      const totalAmount = request.bills.reduce((acc, bill) => acc + bill.amount, 0);
+      
+      const statusSummary = request.bills.reduce((summary, bill) => {
+      summary[bill.status] = (summary[bill.status] || 0) + 1;
+      return summary;
+      }, {} as Record<string, number>);
+      
+      return {
+      ...request,
+      totalAmount,
+      statusSummary,
+      };
+      };

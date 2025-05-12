@@ -38,6 +38,8 @@ if (request.requesterId !== userId) {
   return 
 }
 
+console.log("Incoming requestId:", dto.requestId);
+
 
    // Step 3: Create the bill under that request
 const bill = await prisma.bill.create({

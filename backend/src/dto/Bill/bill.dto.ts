@@ -6,6 +6,6 @@ export interface CreateBillDto {
     priority?: 'LOW' | 'MEDIUM' | 'HIGH'
     dueDate?: string
     providerId?: string
-    requestId: string // now required
+    requestId?: string // now required
     }
   

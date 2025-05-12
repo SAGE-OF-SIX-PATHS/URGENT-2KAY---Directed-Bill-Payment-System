@@ -96,3 +96,22 @@ export const handleUpdateRequestStatus = async (req: Request, res: Response): Pr
     res.status(500).json({ success: false, message: err.message });
     }
     };
+
+
+    export const getRequestDetails = async (req: Request, res: Response) => {
+      const { id } = req.params;
+      
+      try {
+      const request = await RequestService.fetchRequestWithBills(id);
+
+      if (!request) {
+        res.status(404).json({ message: "Request not found" });
+        return 
+      }
+      
+      res.json(request);
+      } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+      }
+      };
