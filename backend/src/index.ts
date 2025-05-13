@@ -9,6 +9,7 @@ import billRoutes from "./routes/bill.routes";
 import sponsorshipRoutes from "./routes/sponsorship.routes";
 import requestRoutes from "./routes/request.routes"
 import providerRoutes from "./routes/provider.route";
+import userRoutes from './routes/user.routes';
 
 
 import bodyParser from "body-parser";
@@ -54,6 +55,7 @@ app.use("/api/bills", billRoutes);
 app.use("/api/sponsorships", sponsorshipRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api", providerRoutes);
+app.use('/api/users', userRoutes);
 
 app.use('/api/email', emailRouter);
 app.use("/transaction", paystackRoutes);
