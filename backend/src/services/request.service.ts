@@ -4,7 +4,7 @@ import { CreateRequestDto, GetRequestsDto } from "../dto/request/Request.dto";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5000";
 
 export const createRequest = async (dto: CreateRequestDto, requesterId: string) => {
-  const { name, notes,  supporterId, billIds } = dto;
+  const { name, notes, supporterId, billIds } = dto;
 
   // Fetch bills and ensure they belong to the user and are not already part of a request
   const bills = await prisma.bill.findMany({
@@ -19,30 +19,40 @@ export const createRequest = async (dto: CreateRequestDto, requesterId: string) 
     throw new Error("Invalid or already-requested bills");
   }
 
-    // Create the request (bundle)
-    const request = await prisma.request.create({
-      data: {
-        name,
-        notes,
-        requesterId,
-        supporterId,
-        bills: {
-          connect: billIds.map(id => ({ id })),
-        },
+  // Create the request (bundle)
+  const request = await prisma.request.create({
+    data: {
+      name,
+      notes,
+      requesterId,
+      supporterId,
+      bills: {
+        connect: billIds.map(id => ({ id })),
       },
-      include: {
-        bills: true,
-        supporter: true,
-      },
-    });
+    },
+    select: {
+      id: true,
+      name: true,
+      notes: true,
+      status: true,
+      feedback: true,
+      publicLinkId: true,
+      createdAt: true,
+      updatedAt: true,
+      bills: true,
+      supporter: true,
+    },
+  });
 
-    const publicLink = `${FRONTEND_URL}/api/requests/public/${request.publicLinkId}`;
+  // ✅ Move this inside the function body
+  const publicLink = `${FRONTEND_URL}/r/${request.publicLinkId}`;
 
-    return {
-      ...request,
-      publicLink,
-    };                       
+  return {
+    ...request,
+    publicLink,
+  };
 };
+
 
 
 export const getRequests = async (filters: GetRequestsDto) => {
