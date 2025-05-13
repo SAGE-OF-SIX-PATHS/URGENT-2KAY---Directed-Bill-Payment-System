@@ -115,7 +115,7 @@ model Request {
   status   RequestStatus @default(PENDING) // 🔧 New field
   feedback String? // Optional field from supporter if rejected
 
-  publicLinkId String? @unique @default(uuid()) // 👈 add this
+  publicLinkId String @unique @default(uuid()) // 👈 add this
 
   requesterId String
   supporterId String?
