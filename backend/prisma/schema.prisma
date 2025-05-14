@@ -118,6 +118,7 @@ model BlockchainRequest {
   id               String   @id @default(uuid())
   billId           String   @unique
   bill             Bill     @relation(fields: [billId], references: [id])
+  blockchainBillId String?
   transactionHash  String?  @unique
   status           BlockchainTxStatus @default(PENDING)
   amount           Float

@@ -9,10 +9,10 @@ import {
 const prisma = new PrismaClient();
 
 export class BlockchainService {
-  private provider: ethers.providers.JsonRpcProvider;
+  public provider: ethers.providers.JsonRpcProvider;
+  public billPaymentContract: ethers.Contract;
   private wallet: ethers.Wallet;
   private tokenContract: ethers.Contract;
-  private billPaymentContract: ethers.Contract;
 
   constructor() {
     this.provider = new ethers.providers.JsonRpcProvider(BLOCKCHAIN_CONFIG.RPC_URL);
@@ -123,6 +123,43 @@ export class BlockchainService {
   }
 
   /**
+   * Synchronize all wallet balances with actual blockchain data
+   */
+  async syncWalletBalances(): Promise<void> {
+    try {
+      // Get all wallets from the database
+      const wallets = await prisma.cryptoWallet.findMany();
+      console.log(`Found ${wallets.length} wallets to synchronize`);
+      
+      // Update each wallet with its actual blockchain balance
+      for (const wallet of wallets) {
+        try {
+          // Get the actual token balance from blockchain
+          const actualBalance = await this.getTokenBalance(wallet.address);
+          const balanceAsFloat = parseFloat(actualBalance);
+          
+          // Update the database record
+          await prisma.cryptoWallet.update({
+            where: { id: wallet.id },
+            data: { u2kBalance: balanceAsFloat }
+          });
+          
+          console.log(`Updated wallet ${wallet.address} with balance: ${balanceAsFloat} U2K`);
+        } catch (error) {
+          console.error(`Error syncing wallet ${wallet.address}:`, error);
+          // Continue with other wallets even if one fails
+          continue;
+        }
+      }
+      
+      console.log('Wallet balance synchronization completed');
+    } catch (error) {
+      console.error('Error synchronizing wallet balances:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Create a bill payment request on the blockchain
    */
   async createBillRequest(
@@ -132,10 +169,18 @@ export class BlockchainService {
     paymentDestination: string,
     amount: number,
     description: string
-  ): Promise<string> {
+  ): Promise<{transactionHash: string, blockchainBillId: string}> {
     try {
       // Convert amount to wei (assuming 18 decimals)
       const amountInWei = ethers.utils.parseUnits(amount.toString(), 18);
+
+      console.log(`Creating bill request with parameters:
+        Beneficiary: ${beneficiaryAddress}
+        Sponsor: ${sponsorAddress}
+        Payment Destination: ${paymentDestination}
+        Amount: ${amount} (${amountInWei.toString()} wei)
+        Description: ${description}
+      `);
 
       // Create transaction on blockchain
       const tx = await this.billPaymentContract.createBill(
@@ -145,8 +190,11 @@ export class BlockchainService {
         description
       );
 
+      console.log(`Transaction sent: ${tx.hash}`);
+
       // Wait for transaction to be mined
       const receipt = await tx.wait();
+      console.log(`Transaction mined in block: ${receipt.blockNumber}`);
 
       // Find the BillCreated event
       const billCreatedEvent = receipt.events?.find(
@@ -159,21 +207,29 @@ export class BlockchainService {
 
       // Get the blockchain bill ID
       const blockchainBillId = billCreatedEvent.args.billId.toString();
+      console.log(`Blockchain bill ID created: ${blockchainBillId}`);
+
+      // Prepare data for the database
+      const data: any = {
+        billId,
+        transactionHash: receipt.transactionHash,
+        status: 'CONFIRMED',
+        amount,
+        cryptoAmount: Number(ethers.utils.formatUnits(amountInWei, 18)),
+        paymentType: 'NATIVE'
+      };
+      
+      // Add the blockchain bill ID to the data object
+      data.blockchainBillId = blockchainBillId;
 
       // Store in our database
-      await prisma.blockchainRequest.create({
-        data: {
-          billId,
-          transactionHash: receipt.transactionHash,
-          status: 'CONFIRMED',
-          amount,
-          cryptoAmount: Number(ethers.utils.formatUnits(amountInWei, 18)),
-          paymentType: 'NATIVE'
-        }
-      });
+      await prisma.blockchainRequest.create({ data });
 
-      // Return the transaction hash
-      return receipt.transactionHash;
+      // Return both the transaction hash and blockchain bill ID
+      return {
+        transactionHash: receipt.transactionHash,
+        blockchainBillId
+      };
     } catch (error) {
       console.error('Error creating bill on blockchain:', error);
       throw error;

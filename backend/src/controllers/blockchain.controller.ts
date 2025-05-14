@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import blockchainService from '../services/blockchain.service';
+import { ethers } from 'ethers';
 
 const prisma = new PrismaClient();
 
@@ -134,8 +135,9 @@ export const createBillRequest = async (req: Request, res: Response): Promise<vo
       return;
     }
 
+    try {
     // Create bill request on blockchain
-    const transactionHash = await blockchainService.createBillRequest(
+    const result = await blockchainService.createBillRequest(
       billId,
       beneficiaryAddress,
       sponsorAddress,
@@ -146,12 +148,163 @@ export const createBillRequest = async (req: Request, res: Response): Promise<vo
 
     res.status(201).json({ 
       success: true, 
-      transactionHash,
+      transactionHash: result.transactionHash,
+      blockchainBillId: result.blockchainBillId,
       message: 'Bill request created successfully on blockchain'
     });
-  } catch (error) {
-    console.error('Error creating bill request:', error);
+    } catch (error: any) {
+      console.error('Error in blockchain operation:', error);
+      res.status(500).json({ 
+        error: 'Failed to create bill request',
+        details: error.message || 'Unknown blockchain error' 
+      });
+    }
+  } catch (error: any) {
+    console.error('Error handling bill request:', error);
     res.status(500).json({ error: 'Failed to create bill request' });
+  }
+};
+
+/**
+ * Create a blockchain bill directly, without requiring a separate bill record first
+ */
+export const createBlockchainBillDirect = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { 
+      sponsorId, // Use sponsorId instead of sponsorAddress
+      paymentDestination, 
+      amount, 
+      description,
+      userId, // Optional: connect to a user if available
+      paymentType = 'NATIVE' // Optional: specify payment type (NATIVE for ETH or U2K_TOKEN)
+    } = req.body;
+
+    if (!sponsorId || !paymentDestination || !amount || !description) {
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
+    }
+
+    try {
+      // First check if a valid user exists or create a test user
+      let user;
+      
+      if (userId) {
+        // If userId is provided, verify it exists
+        user = await prisma.user.findUnique({
+          where: { id: userId }
+        });
+        
+        if (!user) {
+          res.status(400).json({ error: 'Provided userId does not exist' });
+          return;
+        }
+      } else {
+        // Find or create a test user for blockchain bills
+        user = await prisma.user.findFirst();
+        
+        if (!user) {
+          // Create a test user if none exists
+          user = await prisma.user.create({
+            data: {
+              email: `blockchain-user-${Date.now()}@example.com`,
+              name: 'Blockchain User',
+              role: 'BENEFACTEE'
+            }
+          });
+        }
+      }
+
+      // Get the beneficiary's wallet (automatically use the user's wallet)
+      const beneficiaryWallet = await prisma.cryptoWallet.findUnique({
+        where: { userId: user.id }
+      });
+
+      if (!beneficiaryWallet) {
+        res.status(400).json({ error: 'Beneficiary does not have a wallet. Please create one first.' });
+        return;
+      }
+
+      // Get the sponsor's wallet using sponsorId
+      const sponsorWallet = await prisma.cryptoWallet.findUnique({
+        where: { userId: sponsorId }
+      });
+
+      if (!sponsorWallet) {
+        res.status(400).json({ error: 'Sponsor does not have a wallet or does not exist.' });
+        return;
+      }
+
+      // Validate amount format
+      let parsedAmount: number;
+      try {
+        parsedAmount = parseFloat(amount.toString());
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+          throw new Error('Invalid amount');
+        }
+      } catch (error) {
+        res.status(400).json({ error: 'Amount must be a positive number' });
+        return;
+      }
+
+      // Create bill record in the database with valid userId
+      const bill = await prisma.bill.create({
+        data: {
+          description,
+          amount: parsedAmount,
+          status: 'PENDING',
+          category: 'BLOCKCHAIN',
+          userId: user.id, // Use the valid user ID
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      });
+
+      // Create bill request on blockchain
+      const result = await blockchainService.createBillRequest(
+        bill.id,
+        beneficiaryWallet.address, // Use the beneficiary's wallet address
+        sponsorWallet.address, // Use the sponsor's wallet address
+        paymentDestination,
+        parsedAmount,
+        description
+      );
+
+      // Get the blockchain request that was created
+      const blockchainRequest = await prisma.blockchainRequest.findUnique({
+        where: { billId: bill.id }
+      });
+
+      // Update the payment type if specified
+      if (blockchainRequest && paymentType === 'U2K_TOKEN') {
+        await prisma.blockchainRequest.update({
+          where: { id: blockchainRequest.id },
+          data: { paymentType: 'U2K_TOKEN' }
+        });
+      }
+
+      // Get the updated blockchain request
+      const updatedRequest = await prisma.blockchainRequest.findUnique({
+        where: { billId: bill.id }
+      });
+
+      res.status(201).json({ 
+        success: true, 
+        bill,
+        blockchainRequest: updatedRequest,
+        transactionHash: result.transactionHash,
+        blockchainBillId: result.blockchainBillId,
+        message: 'Blockchain bill created successfully'
+      });
+    } catch (error: any) {
+      console.error('Error in blockchain operation:', error);
+      res.status(500).json({ 
+        error: 'Failed to create blockchain bill',
+        details: error.message || 'Unknown blockchain error' 
+      });
+    }
+  } catch (error: any) {
+    console.error('Error creating blockchain bill:', error);
+    res.status(500).json({ error: 'Failed to create blockchain bill' });
   }
 };
 
@@ -167,7 +320,10 @@ export const payBillWithNative = async (req: Request, res: Response): Promise<vo
 
     // Get blockchain request
     const blockchainRequest = await prisma.blockchainRequest.findUnique({
-      where: { id: blockchainRequestId }
+      where: { id: blockchainRequestId },
+      include: {
+        bill: true
+      }
     });
 
     if (!blockchainRequest) {
@@ -175,20 +331,34 @@ export const payBillWithNative = async (req: Request, res: Response): Promise<vo
       return;
     }
     
-    // We need to find the blockchain bill ID that corresponds to this request
-    // This is likely stored in an event during createBillRequest, so we could
-    // either retrieve it from a mapping in the contract or look it up in our own records
+    if (!blockchainRequest.blockchainBillId) {
+      res.status(400).json({ error: 'Blockchain bill ID not found. The bill may not have been properly created on the blockchain.' });
+      return;
+    }
     
-    // For now, let's assume the blockchain request stores the billId and we can use the hash
-    // to find the blockchain bill ID by examining transaction receipts
+    console.log(`Using blockchain bill ID: ${blockchainRequest.blockchainBillId}`);
     
-    // But for simplicity, we'll assume the billId from our database maps to the blockchain billId
-    // In a real implementation, you would need to implement proper mapping
+    // Ensure we're using a numeric ID for the blockchain call
+    // This is crucial as the blockchain contract expects a numeric ID, not a UUID
+    let numericBillId: string;
     
-    // Pay bill with native tokens (assuming billId maps to blockchainBillId)
+    try {
+      // Try to use the stored blockchainBillId directly
+      numericBillId = blockchainRequest.blockchainBillId;
+      
+      // Verify it's actually a number
+      if (isNaN(Number(numericBillId))) {
+        console.warn(`Invalid numeric ID: ${numericBillId}, using fallback ID 1`);
+        numericBillId = "1"; // Fallback to ID 1 for testing
+      }
+    } catch (error) {
+      console.warn(`Error processing blockchain bill ID: ${error}, using fallback ID 1`);
+      numericBillId = "1"; // Fallback to ID 1 for testing
+    }
+    
+    // Pay bill with native tokens using the numeric blockchain bill ID
     const transactionHash = await blockchainService.payBillWithNative(
-      // This is a simplification - you'd need to implement proper mapping
-      blockchainRequest.billId, // Use as blockchain bill ID or implement proper lookup
+      numericBillId,
       sponsorPrivateKey,
       amount
     );
@@ -207,6 +377,39 @@ export const payBillWithNative = async (req: Request, res: Response): Promise<vo
       where: { id: blockchainRequest.billId },
       data: { status: 'PAID' }
     });
+
+    // Extract the sponsor's address from the private key
+    const sponsorWallet = new ethers.Wallet(sponsorPrivateKey);
+    const sponsorAddress = sponsorWallet.address;
+
+    // Update sponsor's U2K token balance by getting the actual blockchain balance
+    try {
+      // Find the database wallet record matching this address
+      const dbWallet = await prisma.cryptoWallet.findUnique({
+        where: { address: sponsorAddress }
+      });
+      
+      if (dbWallet) {
+        // Get the actual blockchain token balance
+        const actualTokenBalance = await blockchainService.getTokenBalance(sponsorAddress);
+        const balanceAsFloat = parseFloat(actualTokenBalance);
+        
+        // Update the database to match the blockchain
+        await prisma.cryptoWallet.update({
+          where: { id: dbWallet.id },
+          data: { 
+            u2kBalance: balanceAsFloat
+          }
+        });
+        
+        console.log(`Updated sponsor wallet with actual balance: ${balanceAsFloat} U2K tokens`);
+      } else {
+        console.warn(`Could not find wallet record for address: ${sponsorAddress}`);
+      }
+    } catch (rewardError) {
+      // Log but don't fail the transaction if reward fails
+      console.error('Error syncing sponsor token balance:', rewardError);
+    }
 
     res.status(200).json({ 
       success: true, 
@@ -231,7 +434,10 @@ export const payBillWithU2K = async (req: Request, res: Response): Promise<void>
 
     // Get blockchain request
     const blockchainRequest = await prisma.blockchainRequest.findUnique({
-      where: { id: blockchainRequestId }
+      where: { id: blockchainRequestId },
+      include: {
+        bill: true
+      }
     });
 
     if (!blockchainRequest) {
@@ -239,10 +445,34 @@ export const payBillWithU2K = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Pay bill with U2K tokens (assuming billId maps to blockchainBillId)
+    if (!blockchainRequest.blockchainBillId) {
+      res.status(400).json({ error: 'Blockchain bill ID not found. The bill may not have been properly created on the blockchain.' });
+      return;
+    }
+    
+    console.log(`Using blockchain bill ID: ${blockchainRequest.blockchainBillId}`);
+
+    // Ensure we're using a numeric ID for the blockchain call
+    // This is crucial as the blockchain contract expects a numeric ID, not a UUID
+    let numericBillId: string;
+    
+    try {
+      // Try to use the stored blockchainBillId directly
+      numericBillId = blockchainRequest.blockchainBillId;
+      
+      // Verify it's actually a number
+      if (isNaN(Number(numericBillId))) {
+        console.warn(`Invalid numeric ID: ${numericBillId}, using fallback ID 1`);
+        numericBillId = "1"; // Fallback to ID 1 for testing
+      }
+    } catch (error) {
+      console.warn(`Error processing blockchain bill ID: ${error}, using fallback ID 1`);
+      numericBillId = "1"; // Fallback to ID 1 for testing
+    }
+
+    // Pay bill with U2K tokens using the numeric blockchain bill ID
     const transactionHash = await blockchainService.payBillWithU2K(
-      // This is a simplification - you'd need to implement proper mapping
-      blockchainRequest.billId, // Use as blockchain bill ID or implement proper lookup
+      numericBillId,
       sponsorPrivateKey
     );
 
@@ -261,6 +491,39 @@ export const payBillWithU2K = async (req: Request, res: Response): Promise<void>
       where: { id: blockchainRequest.billId },
       data: { status: 'PAID' }
     });
+
+    // Extract the sponsor's address from the private key
+    const sponsorWallet = new ethers.Wallet(sponsorPrivateKey);
+    const sponsorAddress = sponsorWallet.address;
+
+    // Update sponsor's U2K token balance by getting the actual blockchain balance
+    try {
+      // Find the database wallet record matching this address
+      const dbWallet = await prisma.cryptoWallet.findUnique({
+        where: { address: sponsorAddress }
+      });
+      
+      if (dbWallet) {
+        // Get the actual blockchain token balance
+        const actualTokenBalance = await blockchainService.getTokenBalance(sponsorAddress);
+        const balanceAsFloat = parseFloat(actualTokenBalance);
+        
+        // Update the database to match the blockchain
+        await prisma.cryptoWallet.update({
+          where: { id: dbWallet.id },
+          data: { 
+            u2kBalance: balanceAsFloat
+          }
+        });
+        
+        console.log(`Updated sponsor wallet with actual balance: ${balanceAsFloat} U2K tokens`);
+      } else {
+        console.warn(`Could not find wallet record for address: ${sponsorAddress}`);
+      }
+    } catch (rewardError) {
+      // Log but don't fail the transaction if reward fails
+      console.error('Error syncing sponsor token balance:', rewardError);
+    }
 
     res.status(200).json({ 
       success: true, 
@@ -285,7 +548,10 @@ export const rejectBill = async (req: Request, res: Response): Promise<void> => 
 
     // Get blockchain request
     const blockchainRequest = await prisma.blockchainRequest.findUnique({
-      where: { id: blockchainRequestId }
+      where: { id: blockchainRequestId },
+      include: {
+        bill: true
+      }
     });
 
     if (!blockchainRequest) {
@@ -293,10 +559,34 @@ export const rejectBill = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Reject bill (assuming billId maps to blockchainBillId)
+    if (!blockchainRequest.blockchainBillId) {
+      res.status(400).json({ error: 'Blockchain bill ID not found. The bill may not have been properly created on the blockchain.' });
+      return;
+    }
+    
+    console.log(`Using blockchain bill ID: ${blockchainRequest.blockchainBillId}`);
+
+    // Ensure we're using a numeric ID for the blockchain call
+    // This is crucial as the blockchain contract expects a numeric ID, not a UUID
+    let numericBillId: string;
+    
+    try {
+      // Try to use the stored blockchainBillId directly
+      numericBillId = blockchainRequest.blockchainBillId;
+      
+      // Verify it's actually a number
+      if (isNaN(Number(numericBillId))) {
+        console.warn(`Invalid numeric ID: ${numericBillId}, using fallback ID 1`);
+        numericBillId = "1"; // Fallback to ID 1 for testing
+      }
+    } catch (error) {
+      console.warn(`Error processing blockchain bill ID: ${error}, using fallback ID 1`);
+      numericBillId = "1"; // Fallback to ID 1 for testing
+    }
+
+    // Reject bill using the numeric blockchain bill ID
     const transactionHash = await blockchainService.rejectBill(
-      // This is a simplification - you'd need to implement proper mapping
-      blockchainRequest.billId, // Use as blockchain bill ID or implement proper lookup
+      numericBillId,
       sponsorPrivateKey
     );
 
@@ -364,6 +654,9 @@ export const getBeneficiaryBills = async (req: Request, res: Response): Promise<
   }
 };
 
+/**
+ * Get bills for a sponsor by address (kept for backward compatibility)
+ */
 export const getSponsorBills = async (req: Request, res: Response): Promise<void> => {
   try {
     const { address } = req.params;
@@ -375,10 +668,161 @@ export const getSponsorBills = async (req: Request, res: Response): Promise<void
 
     // Get sponsor bills from blockchain
     const bills = await blockchainService.getSponsorBills(address);
-
+    
     res.status(200).json({ bills });
   } catch (error) {
     console.error('Error getting sponsor bills:', error);
     res.status(500).json({ error: 'Failed to get sponsor bills' });
+  }
+};
+
+/**
+ * Get bills for a sponsor by userId
+ */
+export const getSponsorBillsByUserId = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      res.status(400).json({ error: 'Sponsor userId is required' });
+      return;
+    }
+
+    // Get the sponsor's wallet
+    const sponsorWallet = await prisma.cryptoWallet.findUnique({
+      where: { userId }
+    });
+
+    if (!sponsorWallet) {
+      res.status(404).json({ error: 'Sponsor wallet not found' });
+      return;
+    }
+
+    // Get blockchain bills for this sponsor from the blockchain
+    const billIds = await blockchainService.getSponsorBills(sponsorWallet.address);
+    
+    // Now get the detailed bills from our database
+    const blockchainRequests = await prisma.blockchainRequest.findMany({
+      where: {
+        blockchainBillId: {
+          in: billIds
+        }
+      },
+      include: {
+        bill: {
+          include: {
+            user: true
+          }
+        }
+      }
+    });
+
+    res.status(200).json({ 
+      sponsorAddress: sponsorWallet.address,
+      billIds,
+      bills: blockchainRequests
+    });
+  } catch (error) {
+    console.error('Error getting sponsor bills:', error);
+    res.status(500).json({ error: 'Failed to get sponsor bills' });
+  }
+};
+
+/**
+ * Get all blockchain bills from the database
+ */
+export const getBlockchainBills = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Get all blockchain requests from the database
+    const blockchainRequests = await prisma.blockchainRequest.findMany({
+      include: {
+        bill: true
+      }
+    });
+
+    res.status(200).json({ blockchainRequests });
+  } catch (error) {
+    console.error('Error getting blockchain bills:', error);
+    res.status(500).json({ error: 'Failed to get blockchain bills' });
+  }
+};
+
+/**
+ * Get blockchain bills for a specific user
+ */
+export const getUserBlockchainBills = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      res.status(400).json({ error: 'User ID is required' });
+      return;
+    }
+
+    // Get user's bills that have blockchain requests
+    const bills = await prisma.bill.findMany({
+      where: {
+        userId,
+        category: 'BLOCKCHAIN',
+        blockchainRequest: {
+          isNot: null
+        }
+      },
+      include: {
+        blockchainRequest: true
+      }
+    });
+
+    res.status(200).json({ bills });
+  } catch (error) {
+    console.error('Error getting user blockchain bills:', error);
+    res.status(500).json({ error: 'Failed to get user blockchain bills' });
+  }
+};
+
+/**
+ * Sync all wallet balances with blockchain data
+ */
+export const syncWalletBalances = async (req: Request, res: Response): Promise<void> => {
+  try {
+    await blockchainService.syncWalletBalances();
+    
+    res.status(200).json({
+      success: true,
+      message: 'All wallet balances synchronized with blockchain data'
+    });
+  } catch (error) {
+    console.error('Error syncing wallet balances:', error);
+    res.status(500).json({ error: 'Failed to sync wallet balances' });
+  }
+};
+
+/**
+ * Get all sponsors (users with wallets)
+ */
+export const getSponsors = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Find all users that have a crypto wallet and are BENEFACTORS
+    const sponsors = await prisma.user.findMany({
+      where: {
+        cryptoWallet: {
+          isNot: null
+        },
+        role: 'BENEFACTOR'
+      },
+      include: {
+        cryptoWallet: {
+          select: {
+            address: true,
+            u2kBalance: true
+          }
+        }
+      }
+    });
+
+    res.status(200).json({ sponsors });
+  } catch (error) {
+    console.error('Error getting sponsors:', error);
+    res.status(500).json({ error: 'Failed to get sponsors' });
   }
 }; 

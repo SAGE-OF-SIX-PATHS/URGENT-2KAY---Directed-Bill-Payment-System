@@ -8,6 +8,17 @@ router.post('/wallets/:userId', blockchainController.createWallet);
 router.get('/wallets/:userId/balance', blockchainController.getWalletBalance);
 router.post('/wallets/:userId/connect', blockchainController.connectExistingWallet);
 
+// Get sponsors route
+router.get('/sponsors', blockchainController.getSponsors);
+
+// Sync wallet balances with blockchain data
+router.post('/wallets/sync', blockchainController.syncWalletBalances);
+
+// Direct blockchain bill creation route
+router.post('/blockchain-bills', blockchainController.createBlockchainBillDirect);
+router.get('/blockchain-bills', blockchainController.getBlockchainBills);
+router.get('/blockchain-bills/user/:userId', blockchainController.getUserBlockchainBills);
+
 // Bill request routes
 router.post('/bills/:billId/request', blockchainController.createBillRequest);
 router.post('/blockchain-requests/:blockchainRequestId/pay-native', blockchainController.payBillWithNative);
@@ -16,7 +27,10 @@ router.post('/blockchain-requests/:blockchainRequestId/reject', blockchainContro
 
 // Blockchain info routes
 router.get('/blockchain-bills/:blockchainBillId', blockchainController.getBillDetails);
-router.get('/beneficiary-bills/:address', blockchainController.getBeneficiaryBills);
+
+// Sponsor and beneficiary bills
+router.get('/sponsors/:userId/bills', blockchainController.getSponsorBillsByUserId);
 router.get('/sponsor-bills/:address', blockchainController.getSponsorBills);
+router.get('/beneficiary-bills/:address', blockchainController.getBeneficiaryBills);
 
 export default router; 
