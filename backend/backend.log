@@ -1,9 +1,0 @@
-
-> backend@1.0.0 dev
-> ts-node-dev src/index.ts
-
-[INFO] 01:36:59 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.8.3)
-Using simplified passport configuration without Google OAuth
-Google OAuth credentials not found. Authentication routes will be disabled.
-Connected to database ✅
-Server running on http://localhost:5000
