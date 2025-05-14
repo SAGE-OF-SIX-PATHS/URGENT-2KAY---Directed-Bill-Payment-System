@@ -1,12 +1,16 @@
 import { prisma } from "../lib/prisma"; 
 import { CreateRequestDto, GetRequestsDto } from "../dto/request/Request.dto";
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5000";
 
 export const createRequest = async (dto: CreateRequestDto, requesterId: string) => {
   const { name, notes, supporterId, billIds } = dto;
 
-  // Fetch bills and ensure they belong to the user and are not already part of a request
+  // 🔍 Validate billIds
+  if (!billIds?.length) {
+    throw new Error("At least one bill must be provided");
+  }
+
+  // 🔐 Find bills and validate ownership + no previous request
   const bills = await prisma.bill.findMany({
     where: {
       id: { in: billIds },
@@ -16,10 +20,10 @@ export const createRequest = async (dto: CreateRequestDto, requesterId: string) 
   });
 
   if (bills.length !== billIds.length) {
-    throw new Error("Invalid or already-requested bills");
+    throw new Error("Some bills are invalid or already requested");
   }
 
-  // Create the request (bundle)
+  // 🏗 Create request
   const request = await prisma.request.create({
     data: {
       name,
@@ -27,7 +31,7 @@ export const createRequest = async (dto: CreateRequestDto, requesterId: string) 
       requesterId,
       supporterId,
       bills: {
-        connect: billIds.map(id => ({ id })),
+        connect: billIds.map((id) => ({ id })),
       },
     },
     select: {
@@ -44,14 +48,15 @@ export const createRequest = async (dto: CreateRequestDto, requesterId: string) 
     },
   });
 
-  // ✅ Move this inside the function body
-  const publicLink = `${FRONTEND_URL}/r/${request.publicLinkId}`;
+  // 🧠 Add public link using env-safe base URL
+  const publicLink = `${process.env.FRONTEND_URL}/r/${request.publicLinkId}`;
 
   return {
     ...request,
     publicLink,
   };
 };
+
 
 
 
