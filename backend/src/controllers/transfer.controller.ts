@@ -3,6 +3,9 @@ import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import { PAYSTACK_SECRET_KEY } from "../config/paystack";
 import { getBankCodeByName } from "../utils/getBankCode";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // Create Paystack API instance
 const paystackAPI = axios.create({
@@ -26,11 +29,13 @@ export const initiateTransfer = async (
           }
 
           try {
-                    // Create Transfer Recipient
+                    // Step 1: Get bank code
                     const bank_code = await getBankCodeByName(bank_name);
                     if (!bank_code) {
-                              return res.status(400).json({ error: "Unsupported or invalid bank name" })
+                              return res.status(400).json({ error: "Unsupported or invalid bank name" });
                     }
+
+                    // Step 2: Create transfer recipient
                     const recipientResponse = await paystackAPI.post("/transferrecipient", {
                               type: "nuban",
                               name,
@@ -40,18 +45,36 @@ export const initiateTransfer = async (
                     });
 
                     const recipient_code = recipientResponse.data.data.recipient_code;
-                    console.log(recipient_code);
+                    console.log("Recipient Code:", recipient_code);
 
-                    //Initiate Transfer
+                    // Step 3: Initiate transfer
+                    const reference = uuidv4();
                     const transferResponse = await paystackAPI.post("/transfer", {
                               source: "balance",
                               amount: amount * 100, // convert to kobo
                               recipient: recipient_code,
                               reason,
-                              reference: uuidv4(),
+                              reference,
                     });
 
-                    res.json({ transfer: transferResponse.data.data });
+                    const transferData = transferResponse.data.data;
+
+                    // ✅ Step 4: Persist transfer in DB
+                    await prisma.transfer.create({
+                              data: {
+                                        name,
+                                        accountNumber: account_number,
+                                        bankName: bank_name,
+                                        bankCode: bank_code,
+                                        recipientCode: recipient_code,
+                                        amount,
+                                        reason,
+                                        reference,
+                                        status: transferData.status || "pending", // fallback if Paystack doesn't return a status
+                              },
+                    });
+
+                    res.json({ transfer: transferData });
           } catch (error: any) {
                     console.error("Transfer Error:", error.response?.data || error.message);
                     res.status(500).json({ error: "Transfer failed" });
