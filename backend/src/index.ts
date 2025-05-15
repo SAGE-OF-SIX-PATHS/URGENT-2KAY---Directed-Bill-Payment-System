@@ -16,6 +16,7 @@ import { errorHandler } from './middlewares/emailErrorMiddleware';
 import { createSubaccount } from "./controllers/subaccount";
 import paymentRoutes from './routes/paymentRoutes';
 import recipientRoutes from './routes/recipientRoutes';
+import { processBulkTransfers } from './jobs/processBulkTransfers';
 
 const prisma = new PrismaClient();
 
@@ -90,3 +91,4 @@ async function startServer() {
 }
 
 startServer();
+processBulkTransfers(); // Start the bulk transfer job
