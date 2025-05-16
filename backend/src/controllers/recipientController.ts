@@ -6,7 +6,7 @@ export const bulkCreateRecipients = async (req: Request, res: Response): Promise
           const recipients = req.body.recipients;
 
           if (!Array.isArray(recipients) || recipients.length === 0) {
-                     res.status(400).json({ error: 'Recipients array is required' });
+                    res.status(400).json({ error: 'Recipients array is required' });
           }
 
           try {

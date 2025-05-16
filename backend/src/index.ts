@@ -13,10 +13,10 @@ import { PORT } from "./config/paystack";
 import { emailRouter } from "./routes/emailRoutes";
 import { loggerMiddleware } from './middlewares/emailLoggerMiddleware';
 import { errorHandler } from './middlewares/emailErrorMiddleware';
-import { createSubaccount } from "./controllers/subaccount";
 import paymentRoutes from './routes/paymentRoutes';
 import recipientRoutes from './routes/recipientRoutes';
 import { processBulkTransfers } from './jobs/processBulkTransfers';
+import bulkTransferRouter from "./routes/bulkTransferRouter";
 
 const prisma = new PrismaClient();
 
@@ -66,6 +66,7 @@ app.use('/api/email', emailRouter);
 app.use("/transaction", paystackRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api', recipientRoutes);
+app.use("/api", bulkTransferRouter);
 
 
 // Error Handling (should be last middleware)

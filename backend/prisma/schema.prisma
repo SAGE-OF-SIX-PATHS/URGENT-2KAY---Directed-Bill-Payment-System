@@ -158,11 +158,13 @@ model Transfer {
   accountNumber  String
   bankName       String
   bankCode       String
+  recipientCode  String
   amount         Float
   reason         String
-  reference      String   @unique
-  status         String   @default("pending")
-  recipientCode  String
+  reference      String?   
+  status         String
+  batchId        String?      // ✅ Must be optional
+  batch          Batch?       @relation(fields: [batchId], references: [id])
   createdAt      DateTime @default(now())
 }
 
@@ -174,4 +176,36 @@ model SplitPayment {
   reference   String   @unique
   status      String   @default("pending")
   createdAt   DateTime @default(now())
+}
+
+model Batch {
+  id             String         @id @default(cuid())
+  createdAt      DateTime       @default(now())
+  status         String
+  transfers      Transfer[]
+  bulkTransfers  BulkTransfer[]
+}
+
+model BulkTransfer {
+  id             String   @id @default(uuid())
+  amount         Int
+  status         String
+  reference      String
+  reason         String
+  recipientCode  String
+  transferCode   String
+  createdAt      DateTime @default(now())
+  batchId        String
+  batch          Batch    @relation(fields: [batchId], references: [id])
+}
+
+model Recipient {
+  id             Int      @id @default(autoincrement())
+  name           String
+  accountNumber  String
+  bankName       String
+  bankCode       String
+  recipientCode  String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

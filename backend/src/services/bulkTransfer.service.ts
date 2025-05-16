@@ -1,6 +1,6 @@
+import { generateReference } from './../utils/generateReference';
 import { PrismaClient, Transfer } from '@prisma/client';
 import paystack from '../lib/paystack';
-import { generateReference } from '../utils/reference';
 
 type TransferData = {
           amount: number;
