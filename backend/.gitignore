@@ -5,6 +5,8 @@
 .env.test
 .env.production
 
+scripts/
+
 # Dependencies
 node_modules/
 /.pnp
