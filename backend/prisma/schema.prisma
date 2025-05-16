@@ -9,19 +9,22 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
+  id        String   @id @default(uuid())
+  email     String   @unique
   name      String?
   phone     String?
   password  String?
-  googleId  String?   @unique
-  role      Role      @default(BENEFACTEE)
+  googleId  String?  @unique
+  role      Role     @default(BENEFACTEE)
   bills     Bill[]
-  requests  Request[] @relation("RequestedBy")
-  supports  Request[] @relation("SupportedBy")
-  wallet    Wallet?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Wallet    Wallet?
+
+  sponsoredBills Bill[] @relation("BillSponsors")
+
+  requestedRequests Request[] @relation("RequestedBy")
+  supportedRequests Request[] @relation("SupportedBy")
 }
 
 enum Role {
@@ -30,52 +33,63 @@ enum Role {
 }
 
 model Provider {
-  id        String   @id @default(uuid())
-  name      String
-  verified  Boolean  @default(false)
-  bills     Bill[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  name          String   @unique
+  email         String?  @unique
+  accountNumber String?
+  verified      Boolean  @default(false)
+  bills         Bill[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Bill {
-  id            String        @id @default(uuid())
-  description   String
-  amount        Float
-  status        BillStatus    @default(PENDING)
-  category      String?
-  dueDate       DateTime?
-  paymentMethod String?
-  userId        String
-  providerId    String?
-  requestId     String?
-  user          User          @relation(fields: [userId], references: [id])
-  provider      Provider?     @relation(fields: [providerId], references: [id])
-  request       Request?      @relation(fields: [requestId], references: [id])
-  transactions  Transaction[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id       String     @id @default(uuid())
+  billName String
+  type     String
+  note     String?
+  amount   Float
+  priority Priority   @default(MEDIUM)
+  status   BillStatus @default(PENDING)
+  dueDate  DateTime?
+
+  userId     String
+  providerId String?
+  requestId  String?
+
+  user         User          @relation(fields: [userId], references: [id])
+  provider     Provider?     @relation(fields: [providerId], references: [id])
+  sponsors     User[]        @relation("BillSponsors")
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  request   Request? @relation(fields: [requestId], references: [id])
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
 }
 
 enum BillStatus {
   PENDING
   APPROVED
-  FAILED
+  REJECTED
   PAID
 }
 
-model Request {
-  id          String   @id @default(uuid())
-  notes       String?
-  priority    String?
-  requesterId String
-  supporterId String
-  bills       Bill[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Transaction {
+  id        String   @id @default(uuid())
+  amount    Float
+  status    String   @default("PENDING") // Could enum later
+  billId    String
+  reference String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  requester User @relation("RequestedBy", fields: [requesterId], references: [id])
-  supporter User @relation("SupportedBy", fields: [supporterId], references: [id])
+  bill Bill @relation(fields: [billId], references: [id])
 }
 
 model Wallet {
@@ -87,14 +101,29 @@ model Wallet {
   createdAt DateTime @default(now())
 }
 
-model Transaction {
-  id        String   @id @default(uuid())
-  amount    Float
-  status    String   @default("PENDING")
-  billId    String
-  reference String   @unique
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Request {
+  id    String  @id @default(uuid())
+  name  String
+  notes String?
+
+  status   RequestStatus @default(PENDING) // 🔧 New field
+  feedback String? // Optional field from supporter if rejected
+
+  publicLinkId String @unique @default(uuid()) // 👈 add this
+
+  requesterId String
+  supporterId String?
+
+  requester User  @relation("RequestedBy", fields: [requesterId], references: [id])
+  supporter User? @relation("SupportedBy", fields: [supporterId], references: [id])
+
+  bills     Bill[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  bill Bill @relation(fields: [billId], references: [id])
 }

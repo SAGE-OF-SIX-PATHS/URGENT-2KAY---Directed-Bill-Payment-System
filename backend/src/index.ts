@@ -4,15 +4,19 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
 import session from "express-session";
-import passport from "./service/passport";
+import passport from "./services/passport";
+import billRoutes from "./routes/bill.routes";
+import sponsorshipRoutes from "./routes/sponsorship.routes";
+import requestRoutes from "./routes/request.routes";
+import providerRoutes from "./routes/provider.route";
+import userRoutes from "./routes/user.routes";
 
-//Nzube
 import bodyParser from "body-parser";
 import paystackRoutes from "./routes/payment.routes";
 import { PORT } from "./config/paystack";
 import { emailRouter } from "./routes/emailRoutes";
-import { loggerMiddleware } from './middlewares/emailLoggerMiddleware';
-import { errorHandler } from './middlewares/emailErrorMiddleware';
+import { loggerMiddleware } from "./middlewares/emailLoggerMiddleware";
+import { errorHandler } from "./middlewares/emailErrorMiddleware";
 
 const prisma = new PrismaClient();
 
@@ -23,24 +27,25 @@ const app = express();
 // ✅ Improved CORS config with dynamic origin checking
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://web-dash-spark.vercel.app"
+  "https://web-dash-spark.vercel.app",
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 
-// Setup session middleware BEFORE passport
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "super-secret", // put a real secret in .env
+    secret: process.env.SESSION_SECRET || "super-secret",
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -58,7 +63,13 @@ app.use(passport.session());
 
 // Routes
 app.use("/auth", authRoutes);
-app.use('/api/email', emailRouter);
+app.use("/api/bills", billRoutes);
+app.use("/api/sponsorships", sponsorshipRoutes);
+app.use("/api/requests", requestRoutes);
+app.use("/api", providerRoutes);
+app.use("/api/users", userRoutes);
+
+app.use("/api/email", emailRouter);
 app.use("/transaction", paystackRoutes);
 
 // Error Handling (should be last middleware)
