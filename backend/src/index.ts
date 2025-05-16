@@ -15,8 +15,13 @@ import bodyParser from "body-parser";
 import paystackRoutes from "./routes/payment.routes";
 import { PORT } from "./config/paystack";
 import { emailRouter } from "./routes/emailRoutes";
-import { loggerMiddleware } from "./middlewares/emailLoggerMiddleware";
-import { errorHandler } from "./middlewares/emailErrorMiddleware";
+import { loggerMiddleware } from './middlewares/emailLoggerMiddleware';
+import { errorHandler } from './middlewares/emailErrorMiddleware';
+
+// Blockchain routes
+import blockchainRoutes from './routes/blockchain.routes';
+import billsRoutes from './routes/bills.routes';
+import blockchainService from './services/blockchain.service';
 
 const prisma = new PrismaClient();
 
@@ -27,25 +32,27 @@ const app = express();
 // ✅ Improved CORS config with dynamic origin checking
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://web-dash-spark.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:4000",
+  "http://localhost:3001",
+  "https://web-dash-spark.vercel.app"
 ];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+}));
 
+// Setup session middleware BEFORE passport
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "super-secret",
+    secret: process.env.SESSION_SECRET || "super-secret", // put a real secret in .env
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -72,6 +79,10 @@ app.use("/api/users", userRoutes);
 app.use("/api/email", emailRouter);
 app.use("/transaction", paystackRoutes);
 
+// Blockchain Routes
+app.use("/blockchain", blockchainRoutes);
+app.use("/bills", billsRoutes);
+
 // Error Handling (should be last middleware)
 app.use(errorHandler);
 
@@ -79,6 +90,29 @@ app.use(errorHandler);
 app.get("/", (_req, res) => {
   res.send("API is working 🚀");
 });
+
+// Set up periodic wallet balance synchronization (every hour)
+function setupRecurringTasks() {
+  // Initial sync after server start (wait 1 minute to ensure everything is running)
+  setTimeout(async () => {
+    try {
+      console.log('Running initial wallet balance synchronization...');
+      await blockchainService.syncWalletBalances();
+    } catch (error) {
+      console.error('Initial wallet balance sync failed:', error);
+    }
+  }, 60000); // 1 minute delay
+  
+  // Set up recurring sync every hour
+  setInterval(async () => {
+    try {
+      console.log('Running scheduled wallet balance synchronization...');
+      await blockchainService.syncWalletBalances();
+    } catch (error) {
+      console.error('Scheduled wallet balance sync failed:', error);
+    }
+  }, 3600000); // Every hour (3600000 ms)
+}
 
 async function startServer() {
   try {
@@ -88,6 +122,10 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
+    
+    // Start recurring tasks
+    setupRecurringTasks();
+    
   } catch (error) {
     console.error("Failed to connect to database ❌", error);
     process.exit(1); // Exit if database connection fails

@@ -9,22 +9,22 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  phone     String?
-  password  String?
-  googleId  String?  @unique
-  role      Role     @default(BENEFACTEE)
-  bills     Bill[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  Wallet    Wallet?
-
+  id             String    @id @default(uuid())
+  email          String    @unique
+  name           String?
+  phone          String?
+  password       String?
+  googleId       String?   @unique
+  role           Role      @default(BENEFACTEE)
+  bills          Bill[]
+  requests       Request[] @relation("RequestedBy")
+  supports       Request[] @relation("SupportedBy")
+  wallet         Wallet?
+  cryptoWallet   CryptoWallet?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
   sponsoredBills Bill[] @relation("BillSponsors")
-
-  requestedRequests Request[] @relation("RequestedBy")
-  supportedRequests Request[] @relation("SupportedBy")
 }
 
 enum Role {
@@ -44,33 +44,37 @@ model Provider {
 }
 
 model Bill {
-  id       String     @id @default(uuid())
-  billName String
-  type     String
-  note     String?
-  amount   Float
-  priority Priority   @default(MEDIUM)
-  status   BillStatus @default(PENDING)
-  dueDate  DateTime?
+  id            String        @id @default(uuid())
+  billName      String
+  description   String
+  type          String
+  note          String?
+  amount        Float
+  priority      Priority      @default(MEDIUM)
+  status        BillStatus    @default(PENDING)
+  category      String?
+  dueDate       DateTime?
+  paymentMethod String?
+  
+  userId        String
+  providerId    String?
+  requestId     String?
 
-  userId     String
-  providerId String?
-  requestId  String?
-
-  user         User          @relation(fields: [userId], references: [id])
-  provider     Provider?     @relation(fields: [providerId], references: [id])
-  sponsors     User[]        @relation("BillSponsors")
-  transactions Transaction[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  request   Request? @relation(fields: [requestId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+  provider      Provider?     @relation(fields: [providerId], references: [id])
+  request       Request?      @relation(fields: [requestId], references: [id])
+  sponsors      User[]        @relation("BillSponsors")
+  transactions  Transaction[]
+  blockchainRequest  BlockchainRequest?
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }
 
 enum Priority {
-  HIGH
-  MEDIUM
   LOW
+  MEDIUM
+  HIGH
 }
 
 enum BillStatus {
@@ -185,13 +189,67 @@ model BulkTransfer {
   batch          Batch    @relation(fields: [batchId], references: [id])
 }
 
+// New models for blockchain integration
+
+model CryptoWallet {
+  id            String     @id @default(uuid())
+  address       String     @unique
+  userId        String     @unique
+  u2kBalance    Float      @default(0)
+  user          User       @relation(fields: [userId], references: [id])
+  transactions  BlockchainTransaction[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model BlockchainRequest {
+  id               String   @id @default(uuid())
+  billId           String   @unique
+  bill             Bill     @relation(fields: [billId], references: [id])
+  blockchainBillId String?
+  transactionHash  String?  @unique
+  status           BlockchainTxStatus @default(PENDING)
+  amount           Float
+  cryptoAmount     Float
+  paymentType      PaymentType @default(NATIVE)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  transactions     BlockchainTransaction[]
+}
+
+model BlockchainTransaction {
+  id                String    @id @default(uuid())
+  transactionHash   String    @unique
+  from              String
+  to                String
+  amount            Float
+  status            BlockchainTxStatus
+  cryptoWalletId    String
+  cryptoWallet      CryptoWallet @relation(fields: [cryptoWalletId], references: [id])
+  blockchainRequestId String?
+  blockchainRequest BlockchainRequest? @relation(fields: [blockchainRequestId], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+enum BlockchainTxStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  REJECTED
+}
+
+enum PaymentType {
+  NATIVE
+  U2K_TOKEN
+}
+
 model Recipient {
-  id             Int      @id @default(autoincrement())
-  name           String
-  accountNumber  String
-  bankName       String
-  bankCode       String
-  recipientCode  String   @unique
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String @id @default(uuid())
+  name          String
+  accountNumber String
+  bankCode      String
+  recipientCode String @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

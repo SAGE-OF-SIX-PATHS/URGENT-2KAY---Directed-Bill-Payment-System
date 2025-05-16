@@ -35,3 +35,4 @@ const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
     res.status(401).json({ error: "Invalid token" });
   }
 };
+
