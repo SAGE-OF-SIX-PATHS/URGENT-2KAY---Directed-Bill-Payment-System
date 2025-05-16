@@ -20,9 +20,21 @@ dotenv.config();
 
 const app = express();
 
+// ✅ Improved CORS config with dynamic origin checking
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://web-dash-spark.vercel.app"
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL,  // your frontend URL
-  credentials: true,                // allow cookies
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
 }));
 
 // Setup session middleware BEFORE passport
@@ -46,7 +58,6 @@ app.use(passport.session());
 
 // Routes
 app.use("/auth", authRoutes);
-// Routes
 app.use('/api/email', emailRouter);
 app.use("/transaction", paystackRoutes);
 

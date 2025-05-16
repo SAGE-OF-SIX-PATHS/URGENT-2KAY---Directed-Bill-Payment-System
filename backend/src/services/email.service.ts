@@ -1,12 +1,13 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 dotenv.config();
-import {EMAIL_USER, EMAIL_PASSWORD, EMAIL_HOST, EMAIL_PORT} from "../utils/env";
+import { EMAIL_USER, EMAIL_PASSWORD, EMAIL_HOST, EMAIL_PORT } from "../utils/env";
+import { emailTemplate } from "../templates/emailTemplate";
 
 export async function emailService(
           email: string,
           subject: string,
-          message: string
+          // message: string
 
 ): Promise<void> {
           const transporter = nodemailer.createTransport({
@@ -32,7 +33,7 @@ export async function emailService(
                     from: EMAIL_USER,
                     to: email,
                     subject: subject,
-                    text: message
+                    html: emailTemplate
 
           };
 
