@@ -127,3 +127,71 @@ model Request {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Payment {
+  id        String   @id @default(uuid())
+  email     String
+  amount    Float
+  reference String   @unique
+  status    String   @default("pending") // "pending", "success", "failed"
+  splitCode String? // For split payment
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AirtimeTransaction {
+  id        String   @id @default(uuid())
+  phone     String
+  amount    Float
+  network   String
+  reference String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Transfer {
+  id             String   @id @default(uuid())
+  name           String
+  accountNumber  String
+  bankName       String
+  bankCode       String
+  recipientCode  String
+  amount         Float
+  reason         String
+  reference      String?   
+  status         String
+  batchId        String?      // ✅ Must be optional
+  batch          Batch?       @relation(fields: [batchId], references: [id])
+  createdAt      DateTime @default(now())
+}
+
+model Batch {
+  id             String         @id @default(cuid())
+  createdAt      DateTime       @default(now())
+  status         String
+  transfers      Transfer[]
+  bulkTransfers  BulkTransfer[]
+}
+
+model BulkTransfer {
+  id             String   @id @default(uuid())
+  amount         Int
+  status         String
+  reference      String
+  reason         String
+  recipientCode  String
+  transferCode   String
+  createdAt      DateTime @default(now())
+  batchId        String
+  batch          Batch    @relation(fields: [batchId], references: [id])
+}
+
+model Recipient {
+  id             Int      @id @default(autoincrement())
+  name           String
+  accountNumber  String
+  bankName       String
+  bankCode       String
+  recipientCode  String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
