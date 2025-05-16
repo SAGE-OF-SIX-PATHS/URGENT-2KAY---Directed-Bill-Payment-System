@@ -32,9 +32,6 @@ const app = express();
 // ✅ Improved CORS config with dynamic origin checking
 const allowedOrigins = [
   "http://localhost:5173",
-  "http://localhost:3000",
-  "http://localhost:4000",
-  "http://localhost:3001",
   "https://web-dash-spark.vercel.app"
 ];
 
