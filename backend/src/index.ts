@@ -4,9 +4,13 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
 import session from "express-session";
-import passport from "./service/passport";
+import passport from "./services/passport";
+import billRoutes from "./routes/bill.routes";
+import sponsorshipRoutes from "./routes/sponsorship.routes";
+import requestRoutes from "./routes/request.routes";
+import providerRoutes from "./routes/provider.route";
+import userRoutes from "./routes/user.routes";
 
-//Nzube
 import bodyParser from "body-parser";
 import paystackRoutes from "./routes/payment.routes";
 import { PORT } from "./config/paystack";
@@ -61,22 +65,21 @@ app.use(bodyParser.json());
 app.use(express.json());
 app.use(loggerMiddleware);
 
-// Only initialize passport if Google OAuth credentials are available
-const hasGoogleCredentials = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
-if (hasGoogleCredentials) {
-  app.use(passport.initialize());
-  app.use(passport.session());
-  app.use("/auth", authRoutes);
-} else {
-  console.warn("Google OAuth credentials not found. Authentication routes will be disabled.");
-}
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Routes
-if (hasGoogleCredentials) {
-  app.use("/auth", authRoutes);
-}
-app.use('/api/email', emailRouter);
+app.use("/auth", authRoutes);
+app.use("/api/bills", billRoutes);
+app.use("/api/sponsorships", sponsorshipRoutes);
+app.use("/api/requests", requestRoutes);
+app.use("/api", providerRoutes);
+app.use("/api/users", userRoutes);
+
+app.use("/api/email", emailRouter);
 app.use("/transaction", paystackRoutes);
+
+// Blockchain Routes
 app.use("/blockchain", blockchainRoutes);
 app.use("/bills", billsRoutes);
 

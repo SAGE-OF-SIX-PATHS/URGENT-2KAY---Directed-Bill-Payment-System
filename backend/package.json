@@ -7,7 +7,7 @@
         "dev": "ts-node-dev src/index.ts",
         "build": "tsc && prisma generate",
         "start": "node dist/index.js",
-        "web3-test": "ts-node-dev src/web3-test-server.ts"
+        "seed:provider": "ts-node scripts/seed-provider.ts"
     },
     "keywords": [],
     "author": "",

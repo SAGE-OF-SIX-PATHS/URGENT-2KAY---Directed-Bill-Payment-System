@@ -1,9 +1,11 @@
-          ``# Environment variables
+# Environment variables
 .env
 .env.local
 .env.development
 .env.test
 .env.production
+
+scripts/
 
 # Dependencies
 node_modules/

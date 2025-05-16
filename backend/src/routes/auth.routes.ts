@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { registerUser, loginUser } from "../controllers/auth.controller";
-import passport from "../service/passport";
+import passport from "../services/passport";
 import { generateToken } from "../utils/jwt";
 
 const router = Router();
