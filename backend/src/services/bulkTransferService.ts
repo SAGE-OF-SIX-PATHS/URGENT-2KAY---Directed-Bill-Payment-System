@@ -29,10 +29,7 @@ export async function executeBulkTransfer(): Promise<{
 
           let transfers = await prisma.transfer.findMany({
                     where: {
-                              amount: { gt: 0 },
-                              recipientCode: { not: "" },
                               status: { not: "success" },
-                              reference: null as unknown as string | "",
                     },
           });
 
@@ -64,7 +61,9 @@ export async function executeBulkTransfer(): Promise<{
                               t.reference = newRef;
                               console.log(`🆕 Reference generated for Transfer ID ${t.id}: ${newRef}`);
                     } else {
-                              console.log(`✅ Transfer ID ${t.id} already has reference: ${t.reference}`);
+                              console.log(
+                                        `✅ Transfer ID ${t.id} already has reference: ${t.reference}`
+                              );
                     }
           }
 
@@ -77,13 +76,15 @@ export async function executeBulkTransfer(): Promise<{
 
           // Format for Paystack
           const paystackTransfers: PaystackTransfer[] = transfers.map((t) => ({
-                    amount: Math.round(t.amount * 100), // kobo
-                    recipient: t.recipientCode,
+                    amount: 1000, // kobo
                     reference: t.reference!,
                     reason: t.reason || t.name || "Bulk transfer",
+                    recipient: t.recipientCode,
           }));
 
           let bulkTransferResults: PaystackBulkTransferResponseData[];
+
+          console.log(paystackTransfers);
 
           try {
                     console.log("📤 Sending bulk transfer to Paystack...");
@@ -99,9 +100,14 @@ export async function executeBulkTransfer(): Promise<{
                     }
 
                     bulkTransferResults = response.data.data;
-                    console.log(`✅ Paystack bulk transfer successful. Returned ${bulkTransferResults.length} records.`);
+                    console.log(
+                              `✅ Paystack bulk transfer successful. Returned ${bulkTransferResults.length} records.`
+                    );
           } catch (error: any) {
-                    console.error("❌ Bulk transfer failed:", error.response?.data || error.message);
+                    console.error(
+                              "❌ Bulk transfer failed:",
+                              error.response?.data || error.message
+                    );
                     throw new Error("Failed to initiate Paystack bulk transfer");
           }
 
@@ -109,20 +115,32 @@ export async function executeBulkTransfer(): Promise<{
           for (const result of bulkTransferResults) {
                     const transfer = transfers.find((t) => t.reference === result.reference);
                     if (!transfer) {
-                              console.warn(`⚠️ No matching transfer found for reference: ${result.reference}`);
+                              console.warn(
+                                        `⚠️ No matching transfer found for reference: ${result.reference}`
+                              );
                               continue;
                     }
+
+                    const createdAt = result.created_at
+                              ? new Date(result.created_at * 1000)
+                              : new Date(); // fallback to current date
+
+                    if (isNaN(createdAt.getTime())) {
+                              throw new Error(`Invalid created_at timestamp: ${result.created_at}`);
+                    }
+
+                    console.log(result.reason);
 
                     await prisma.bulkTransfer.create({
                               data: {
                                         amount: result.amount,
                                         status: result.status,
                                         reference: result.reference,
-                                        reason: result.reason,
                                         recipientCode: result.recipient,
                                         transferCode: result.transfer_code,
                                         batchId: batch.id,
-                                        createdAt: new Date(result.created_at * 1000),
+                                        createdAt: createdAt,
+                                        reason: "Because I can",
                               },
                     });
 

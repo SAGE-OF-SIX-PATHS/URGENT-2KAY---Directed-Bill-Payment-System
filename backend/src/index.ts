@@ -11,11 +11,11 @@ import bodyParser from "body-parser";
 import paystackRoutes from "./routes/paymentRoutes";
 import { PORT } from "./config/paystack";
 import { emailRouter } from "./routes/emailRoutes";
-import { loggerMiddleware } from './middlewares/emailLoggerMiddleware';
-import { errorHandler } from './middlewares/emailErrorMiddleware';
-import paymentRoutes from './routes/paymentRoutes';
-import recipientRoutes from './routes/recipientRoutes';
-import { processBulkTransfers } from './jobs/processBulkTransfers';
+import { loggerMiddleware } from "./middlewares/emailLoggerMiddleware";
+import { errorHandler } from "./middlewares/emailErrorMiddleware";
+import paymentRoutes from "./routes/paymentRoutes";
+import recipientRoutes from "./routes/recipientRoutes";
+import { processBulkTransfers } from "./jobs/processBulkTransfers";
 import bulkTransferRouter from "./routes/bulkTransferRouter";
 
 const prisma = new PrismaClient();
@@ -24,22 +24,24 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Improved CORS config with dynamic origin checking
+// ✅ CORS config with dynamic origin checking
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://web-dash-spark.vercel.app"
+  "https://web-dash-spark.vercel.app",
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 
 // Setup session middleware BEFORE passport
 app.use(
@@ -62,12 +64,11 @@ app.use(passport.session());
 
 // Routes
 app.use("/auth", authRoutes);
-app.use('/api/email', emailRouter);
+app.use("/api/email", emailRouter);
 app.use("/transaction", paystackRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api', recipientRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api", recipientRoutes);
 app.use("/api", bulkTransferRouter);
-
 
 // Error Handling (should be last middleware)
 app.use(errorHandler);
@@ -92,4 +93,4 @@ async function startServer() {
 }
 
 startServer();
-processBulkTransfers(); // Start the bulk transfer job
+// processBulkTransfers(); // Start the bulk transfer job
