@@ -1,10 +1,11 @@
-# 2KAY Directed Bill Payment System - Web3 Integration Guide
+# 2KAY Directed Bill Payment System - Blockchain Integration Guide
 
-This document provides guidance for frontend developers on how to integrate with the web3 features of the 2KAY Directed Bill Payment System.
+This document provides guidance for frontend developers on how to integrate with the blockchain features of the 2KAY Directed Bill Payment System.
 
 ## Table of Contents
 - [Blockchain Configuration](#blockchain-configuration)
 - [API Endpoints](#api-endpoints)
+- [User Flows](#user-flows)
 - [Integration Guide for Frontend Developers](#integration-guide-for-frontend-developers)
 - [Example Implementation](#example-implementation)
 - [Troubleshooting](#troubleshooting)
@@ -20,7 +21,7 @@ The system uses the following blockchain configuration:
 
 ### Contract ABIs
 
-To interact with the contracts directly from the frontend, you'll need the contract ABIs:
+To interact with the contracts directly from the frontend, you'll need the contract ABIs which are defined in `src/config/blockchain.ts`:
 
 <details>
 <summary>U2K Token ABI</summary>
@@ -91,23 +92,23 @@ To interact with the contracts directly from the frontend, you'll need the contr
 
 ## API Endpoints
 
-The following API endpoints are available for web3 integration:
+The following API endpoints are available for blockchain integration:
 
 ### Wallet Management
 
 - **Connect Existing Wallet**
-  - `POST /api/blockchain/wallets/:userId/connect`
+  - `POST /blockchain/wallets/:userId/connect`
   - Request body: `{ "walletAddress": "0x..." }`
   - Response: Wallet details with balances and metrics
 
 - **Get Wallet Balance**
-  - `GET /api/blockchain/wallets/:userId/balance`
+  - `GET /blockchain/wallets/:userId/balance`
   - Response: `{ "address": "0x...", "balance": "10.5" }`
 
 ### Bill Management
 
 - **Create Blockchain Bill**
-  - `POST /api/blockchain/blockchain-bills`
+  - `POST /blockchain/blockchain-bills`
   - Request body:
     ```json
     {
@@ -122,21 +123,21 @@ The following API endpoints are available for web3 integration:
   - Response: Bill creation confirmation with transaction hash
 
 - **Get Blockchain Bills**
-  - `GET /api/blockchain/blockchain-bills`
+  - `GET /blockchain/blockchain-bills`
   - Response: List of all blockchain bills
 
 - **Get User Blockchain Bills**
-  - `GET /api/blockchain/blockchain-bills/user/:userId`
+  - `GET /blockchain/blockchain-bills/user/:userId`
   - Response: List of user's blockchain bills
 
 - **Get Bill Details**
-  - `GET /api/blockchain/blockchain-bills/:blockchainBillId`
+  - `GET /blockchain/blockchain-bills/:blockchainBillId`
   - Response: Detailed information about a specific bill
 
 ### Bill Requests
 
 - **Create Bill Request**
-  - `POST /api/blockchain/bills/:billId/request`
+  - `POST /blockchain/bills/:billId/request`
   - Request body:
     ```json
     {
@@ -150,19 +151,19 @@ The following API endpoints are available for web3 integration:
   - Response: Request creation confirmation with transaction hash
 
 - **Pay Bill With Native Token (ETH)**
-  - `POST /api/blockchain/blockchain-requests/:blockchainRequestId/pay-native`
+  - `POST /blockchain/blockchain-requests/:blockchainRequestId/pay-native`
   - Request body: 
     ```json
     {
-      "amount": "0.1", // Amount in ETH
       "sponsorAddress": "0x...",
-      "sponsorSignature": "0x..." // Signature from wallet
+      "sponsorSignature": "0x...", // Signature from wallet
+      "amount": "0.1" // Amount in ETH
     }
     ```
   - Response: Payment confirmation with transaction hash
 
 - **Pay Bill With U2K Token**
-  - `POST /api/blockchain/blockchain-requests/:blockchainRequestId/pay-u2k`
+  - `POST /blockchain/blockchain-requests/:blockchainRequestId/pay-u2k`
   - Request body:
     ```json
     {
@@ -173,7 +174,7 @@ The following API endpoints are available for web3 integration:
   - Response: Payment confirmation with transaction hash
 
 - **Reject Bill**
-  - `POST /api/blockchain/blockchain-requests/:blockchainRequestId/reject`
+  - `POST /blockchain/blockchain-requests/:blockchainRequestId/reject`
   - Request body:
     ```json
     {
@@ -186,38 +187,94 @@ The following API endpoints are available for web3 integration:
 ### Sponsor Management
 
 - **Get Sponsors**
-  - `GET /api/blockchain/sponsors`
+  - `GET /blockchain/sponsors`
   - Response: List of sponsors with their metrics
 
-- **Get Sponsor Bills**
-  - `GET /api/blockchain/sponsor-bills/:address`
-  - Response: List of bills associated with a sponsor's address
-
 - **Get Sponsor Bills By User ID**
-  - `GET /api/blockchain/sponsors/:userId/bills`
+  - `GET /blockchain/sponsors/:userId/bills`
   - Response: List of bills associated with a sponsor user
 
+- **Get Sponsor Bills By Address**
+  - `GET /blockchain/sponsor-bills/:address`
+  - Response: List of bills associated with a sponsor's address
+
 - **Get Beneficiary Bills**
-  - `GET /api/blockchain/beneficiary-bills/:address`
+  - `GET /blockchain/beneficiary-bills/:address`
   - Response: List of bills associated with a beneficiary's address
 
 - **Get Sponsor Metrics**
-  - `GET /api/blockchain/sponsors/:sponsorAddress/metrics`
+  - `GET /blockchain/sponsors/:sponsorAddress/metrics`
   - Response: Metrics for a specific sponsor
 
-### Sync and Notifications
+### System Management
 
 - **Sync Wallet Balances**
-  - `POST /api/blockchain/wallets/sync`
+  - `POST /blockchain/wallets/sync`
   - Response: Confirmation of balance sync
 
-- **Get Blockchain Notifications**
-  - `GET /api/blockchain/notifications`
-  - Response: List of blockchain-related notifications
+## User Flows
 
-- **Mark Notification as Read**
-  - `PUT /api/blockchain/notifications/:notificationId/read`
-  - Response: Confirmation of update
+### Beneficiary (Benefactee) Flow
+
+1. **Connect Wallet**
+   - User navigates to the Web3 dashboard
+   - User connects their EVM-compatible wallet (MetaMask, etc.)
+   - System stores wallet address in the database for identification
+   - API Endpoint: `POST /blockchain/wallets/:userId/connect`
+
+2. **Create Bill Request**
+   - User creates a new bill request with:
+     - Benefactor's ID or wallet address
+     - Amount requested (in ETH or USDT)
+     - Payment destination address
+     - Bill description
+   - API Endpoint: `POST /blockchain/blockchain-bills` or `POST /blockchain/bills/:billId/request`
+
+3. **Track Bill Status**
+   - User views their bill requests and statuses
+   - API Endpoints: 
+     - `GET /blockchain/blockchain-bills/user/:userId`
+     - `GET /blockchain/beneficiary-bills/:address`
+
+4. **View Wallet Balance**
+   - User can view their wallet balances (ETH, USDT, U2K)
+   - API Endpoint: `GET /blockchain/wallets/:userId/balance`
+
+### Benefactor (Sponsor) Flow
+
+1. **Connect Wallet**
+   - Sponsor connects their EVM-compatible wallet
+   - System stores wallet address in database
+   - API Endpoint: `POST /blockchain/wallets/:userId/connect`
+
+2. **View Pending Requests**
+   - Sponsor views pending bill requests directed to them
+   - API Endpoints: 
+     - `GET /blockchain/sponsors/:userId/bills` 
+     - `GET /blockchain/sponsor-bills/:address`
+
+3. **Review and Pay/Reject Bills**
+   - Sponsor reviews bill details
+   - Options to:
+     - Pay bill with ETH: `POST /blockchain/blockchain-requests/:blockchainRequestId/pay-native`
+     - Pay bill with U2K tokens: `POST /blockchain/blockchain-requests/:blockchainRequestId/pay-u2k`
+     - Reject bill: `POST /blockchain/blockchain-requests/:blockchainRequestId/reject`
+   - When paying, sponsor signs transaction with their connected wallet
+
+4. **Receive Rewards**
+   - After successful payment, sponsor receives U2K tokens as rewards
+   - System automatically updates U2K balance in database
+   - No separate API call needed - handled during payment process
+
+5. **View Dashboard**
+   - Sponsor views dashboard showing:
+     - Pending bills
+     - Completed bills with transaction hashes
+     - Wallet balances (ETH, USDT, U2K)
+   - API Endpoints:
+     - `GET /blockchain/sponsors/:userId/bills`
+     - `GET /blockchain/wallets/:userId/balance`
+     - `GET /blockchain/sponsors/:sponsorAddress/metrics`
 
 ## Integration Guide for Frontend Developers
 
@@ -268,10 +325,11 @@ After connecting to the blockchain, connect the user's wallet to the backend:
 ```javascript
 const connectWalletToBackend = async (userId, walletAddress) => {
   try {
-    const response = await fetch(`/api/blockchain/wallets/${userId}/connect`, {
+    const response = await fetch(`/blockchain/wallets/${userId}/connect`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${yourAuthToken}` // Include your auth token
       },
       body: JSON.stringify({ walletAddress }),
     });
@@ -299,17 +357,18 @@ To create a bill on the blockchain:
 ```javascript
 const createBlockchainBill = async (sponsorId, paymentDestination, amount, description, userId) => {
   try {
-    const response = await fetch("/api/blockchain/blockchain-bills", {
+    const response = await fetch("/blockchain/blockchain-bills", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${yourAuthToken}` // Include your auth token
       },
       body: JSON.stringify({
-        sponsorId,
-        paymentDestination,
+        sponsorId, // User ID of the sponsor, not wallet address
+        paymentDestination, // Blockchain address
         amount,
         description,
-        userId,
+        userId, // Optional: ID of the beneficiary user
         paymentType: "NATIVE" // or "U2K_TOKEN"
       }),
     });
@@ -347,15 +406,16 @@ const payBillWithNative = async (blockchainRequestId, amount, signer) => {
     const signature = await signer.signMessage(message);
     
     // Send to backend
-    const response = await fetch(`/api/blockchain/blockchain-requests/${blockchainRequestId}/pay-native`, {
+    const response = await fetch(`/blockchain/blockchain-requests/${blockchainRequestId}/pay-native`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${yourAuthToken}` // Include your auth token
       },
       body: JSON.stringify({
-        amount,
         sponsorAddress: address,
-        sponsorSignature: signature
+        sponsorSignature: signature,
+        amount
       }),
     });
     
@@ -390,10 +450,11 @@ const payBillWithU2K = async (blockchainRequestId, signer) => {
     const signature = await signer.signMessage(message);
     
     // Send to backend
-    const response = await fetch(`/api/blockchain/blockchain-requests/${blockchainRequestId}/pay-u2k`, {
+    const response = await fetch(`/blockchain/blockchain-requests/${blockchainRequestId}/pay-u2k`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${yourAuthToken}` // Include your auth token
       },
       body: JSON.stringify({
         sponsorAddress: address,
@@ -434,10 +495,11 @@ const rejectBill = async (blockchainRequestId, signer) => {
     const signature = await signer.signMessage(message);
     
     // Send to backend
-    const response = await fetch(`/api/blockchain/blockchain-requests/${blockchainRequestId}/reject`, {
+    const response = await fetch(`/blockchain/blockchain-requests/${blockchainRequestId}/reject`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${yourAuthToken}` // Include your auth token
       },
       body: JSON.stringify({
         sponsorAddress: address,
@@ -466,10 +528,10 @@ const rejectBill = async (blockchainRequestId, signer) => {
 Here's a React component example to connect a wallet and display balance:
 
 ```jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ethers } from 'ethers';
 
-const BlockchainWallet = ({ userId }) => {
+const BlockchainWallet = ({ userId, authToken }) => {
   const [wallet, setWallet] = useState(null);
   const [balances, setBalances] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -493,9 +555,12 @@ const BlockchainWallet = ({ userId }) => {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       
       // Connect to backend
-      const response = await fetch(`/api/blockchain/wallets/${userId}/connect`, {
+      const response = await fetch(`/blockchain/wallets/${userId}/connect`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
         body: JSON.stringify({ walletAddress: address })
       });
       
@@ -530,7 +595,7 @@ const BlockchainWallet = ({ userId }) => {
             <div>
               <p><strong>ETH Balance:</strong> {balances.ETH}</p>
               <p><strong>U2K Balance:</strong> {balances.U2K}</p>
-              <p><strong>USDT Balance:</strong> {balances.USDT}</p>
+              {balances.USDT && <p><strong>USDT Balance:</strong> {balances.USDT}</p>}
             </div>
           )}
         </div>
@@ -552,7 +617,7 @@ export default BlockchainWallet;
      - RPC URL: https://base-sepolia.g.alchemy.com/v2/E8dbOUE0UW0805txb2tZSsK7icYnHDm7/
      - Chain ID: 11155111
      - Symbol: ETH
-     - Block Explorer: https://sepolia.basescan.org/
+     - Block Explorer: https://sepolia-explorer.base.org/
 
 3. **Get Test ETH**: Visit the Base Sepolia faucet to get test ETH: https://www.base.org/developer/docs/guides/sepolia-faucet
 
@@ -561,5 +626,7 @@ export default BlockchainWallet;
    - Enter token contract address: 0x6CC3eD7c089a866f822Cc7182C30A07c75647eDA
    - Symbol: U2K
    - Decimals: 18
+
+5. **Authentication Issues**: Make sure you're including the correct authentication token in your API requests.
 
 For additional support, please contact the backend development team. 

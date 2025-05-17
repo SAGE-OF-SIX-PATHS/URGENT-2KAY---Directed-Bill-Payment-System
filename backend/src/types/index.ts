@@ -1,13 +1,20 @@
 import { User } from '@prisma/client';
 
-// Extend Express Request type
-declare global {
-  namespace Express {
-    interface Request {
-      user?: User;
-    }
-  }
-}
+// Use module augmentation instead of namespace declaration
+// This helps avoid the type conflict by augmenting the existing type
+import 'express';
+
+// Note: Removed the conflicting Express namespace declaration
+
+// Create a type that matches the Express.User definition but can be extended
+export type RequestUser = {
+  id: string;
+  role?: string;
+  email?: string;
+  // Add any other properties you need to access from req.user
+  name?: string;
+  phone?: string;
+};
 
 // Custom blockchain request type
 export interface CustomBlockchainRequest {
