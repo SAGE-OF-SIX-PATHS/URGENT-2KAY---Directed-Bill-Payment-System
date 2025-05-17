@@ -8,8 +8,8 @@
   End-to-end platform for creating bills &amp; bundles, collecting payments
   through Paystack, and paying multiple service providers in one shot with
   secure bulk transfers.<br />
-  <i>TypeScript · Node · Prisma · React · Solidity · Ethers.js</i>
-  <p> This github reo contains only the backend and web3 implementation</p>
+  <i>TypeScript · Node · express · Prisma · postgreSQL · React · Solidity · Ethers.js</i>
+  <p> This github repository contains only the backend and web3 implementation</p>
 </p>
 
 <p align="center">
