@@ -4,9 +4,13 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
 import session from "express-session";
-import passport from "./service/passport";
+import passport from "./services/passport";
+import billRoutes from "./routes/bill.routes";
+import sponsorshipRoutes from "./routes/sponsorship.routes";
+import requestRoutes from "./routes/request.routes";
+import providerRoutes from "./routes/provider.route";
+import userRoutes from "./routes/user.routes";
 
-//Nzube
 import bodyParser from "body-parser";
 import paystackRoutes from "./routes/paymentRoutes";
 import { PORT } from "./config/paystack";
@@ -17,6 +21,11 @@ import paymentRoutes from "./routes/paymentRoutes";
 import recipientRoutes from "./routes/recipientRoutes";
 import { processBulkTransfers } from "./jobs/processBulkTransfers";
 import bulkTransferRouter from "./routes/bulkTransferRouter";
+
+// Blockchain routes
+import blockchainRoutes from './routes/blockchain.routes';
+import billsRoutes from './routes/bills.routes';
+import blockchainService from './services/blockchain.service';
 
 const prisma = new PrismaClient();
 
@@ -64,12 +73,19 @@ app.use(passport.session());
 
 // Routes
 app.use("/auth", authRoutes);
-app.use("/api/email", emailRouter);
+app.use("/api/bills", billRoutes);
+app.use("/api/sponsorships", sponsorshipRoutes);
+app.use("/api/requests", requestRoutes);
+app.use("/api", providerRoutes);
+app.use("/api/users", userRoutes);
+app.use('/api/email', emailRouter);
 app.use("/transaction", paystackRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api", recipientRoutes);
 app.use("/api", bulkTransferRouter);
-
+// Blockchain Routes
+app.use("/blockchain", blockchainRoutes);
+app.use("/bills", billsRoutes);
 // Error Handling (should be last middleware)
 app.use(errorHandler);
 
@@ -77,6 +93,29 @@ app.use(errorHandler);
 app.get("/", (_req, res) => {
   res.send("API is working 🚀");
 });
+
+// Set up periodic wallet balance synchronization (every hour)
+function setupRecurringTasks() {
+  // Initial sync after server start (wait 1 minute to ensure everything is running)
+  setTimeout(async () => {
+    try {
+      console.log('Running initial wallet balance synchronization...');
+      await blockchainService.syncWalletBalances();
+    } catch (error) {
+      console.error('Initial wallet balance sync failed:', error);
+    }
+  }, 60000); // 1 minute delay
+  
+  // Set up recurring sync every hour
+  setInterval(async () => {
+    try {
+      console.log('Running scheduled wallet balance synchronization...');
+      await blockchainService.syncWalletBalances();
+    } catch (error) {
+      console.error('Scheduled wallet balance sync failed:', error);
+    }
+  }, 3600000); // Every hour (3600000 ms)
+}
 
 async function startServer() {
   try {
@@ -86,6 +125,10 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
+    
+    // Start recurring tasks
+    setupRecurringTasks();
+    
   } catch (error) {
     console.error("Failed to connect to database ❌", error);
     process.exit(1); // Exit if database connection fails

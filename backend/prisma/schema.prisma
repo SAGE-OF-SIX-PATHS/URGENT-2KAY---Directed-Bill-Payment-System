@@ -8,19 +8,22 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  name      String?
-  phone     String?
-  password  String?
-  googleId  String?   @unique
-  role      Role      @default(BENEFACTEE)
-  bills     Bill[]
-  requests  Request[] @relation("RequestedBy")
-  supports  Request[] @relation("SupportedBy")
-  wallet    Wallet?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id             String    @id @default(uuid())
+  email          String    @unique
+  name           String?
+  phone          String?
+  password       String?
+  googleId       String?   @unique
+  role           Role      @default(BENEFACTEE)
+  bills          Bill[]
+  requests       Request[] @relation("RequestedBy")
+  supports       Request[] @relation("SupportedBy")
+  wallet         Wallet?
+  cryptoWallet   CryptoWallet?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  sponsoredBills Bill[] @relation("BillSponsors")
 }
 
 enum Role {
@@ -29,52 +32,67 @@ enum Role {
 }
 
 model Provider {
-  id        String   @id @default(uuid())
-  name      String
-  verified  Boolean  @default(false)
-  bills     Bill[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  name          String   @unique
+  email         String?  @unique
+  accountNumber String?
+  verified      Boolean  @default(false)
+  bills         Bill[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Bill {
   id            String        @id @default(uuid())
+  billName      String
   description   String
+  type          String
+  note          String?
   amount        Float
+  priority      Priority      @default(MEDIUM)
   status        BillStatus    @default(PENDING)
   category      String?
   dueDate       DateTime?
   paymentMethod String?
+  
   userId        String
   providerId    String?
   requestId     String?
+
   user          User          @relation(fields: [userId], references: [id])
   provider      Provider?     @relation(fields: [providerId], references: [id])
   request       Request?      @relation(fields: [requestId], references: [id])
+  sponsors      User[]        @relation("BillSponsors")
   transactions  Transaction[]
+  blockchainRequest  BlockchainRequest?
+  
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
 }
 
 enum BillStatus {
   PENDING
   APPROVED
-  FAILED
+  REJECTED
   PAID
 }
 
-model Request {
-  id          String   @id @default(uuid())
-  notes       String?
-  priority    String?
-  requesterId String
-  supporterId String
-  bills       Bill[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Transaction {
+  id        String   @id @default(uuid())
+  amount    Float
+  status    String   @default("PENDING") // Could enum later
+  billId    String
+  reference String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  requester User @relation("RequestedBy", fields: [requesterId], references: [id])
-  supporter User @relation("SupportedBy", fields: [supporterId], references: [id])
+  bill Bill @relation(fields: [billId], references: [id])
 }
 
 model Wallet {
@@ -86,18 +104,156 @@ model Wallet {
   createdAt DateTime @default(now())
 }
 
-model Transaction {
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Request {
+  id    String  @id @default(uuid())
+  name  String
+  notes String?
+
+  status   RequestStatus @default(PENDING) // 🔧 New field
+  feedback String? // Optional field from supporter if rejected
+
+  publicLinkId String @unique @default(uuid()) // 👈 add this
+
+  requesterId String
+  supporterId String?
+
+  requester User  @relation("RequestedBy", fields: [requesterId], references: [id])
+  supporter User? @relation("SupportedBy", fields: [supporterId], references: [id])
+
+  bills     Bill[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
   id        String   @id @default(uuid())
+  email     String
   amount    Float
   status    String   @default("PENDING")
   billId    String
   reference String   @unique
+  status    String   @default("pending") // "pending", "success", "failed"
+  splitCode String? // For split payment
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  bill Bill @relation(fields: [billId], references: [id])
 }
 
+model AirtimeTransaction {
+  id        String   @id @default(uuid())
+  phone     String
+  amount    Float
+  network   String
+  reference String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Transfer {
+  id             String   @id @default(uuid())
+  name           String
+  accountNumber  String
+  bankName       String
+  bankCode       String
+  recipientCode  String
+  amount         Float
+  reason         String
+  reference      String?   
+  status         String
+  batchId        String?      // ✅ Must be optional
+  batch          Batch?       @relation(fields: [batchId], references: [id])
+  createdAt      DateTime @default(now())
+}
+
+model Batch {
+  id             String         @id @default(cuid())
+  createdAt      DateTime       @default(now())
+  status         String
+  transfers      Transfer[]
+  bulkTransfers  BulkTransfer[]
+}
+
+model BulkTransfer {
+  id             String   @id @default(uuid())
+  amount         Int
+  status         String
+  reference      String
+  reason         String
+  recipientCode  String
+  transferCode   String
+  createdAt      DateTime @default(now())
+  batchId        String
+  batch          Batch    @relation(fields: [batchId], references: [id])
+}
+
+// New models for blockchain integration
+
+model CryptoWallet {
+  id            String     @id @default(uuid())
+  address       String     @unique
+  userId        String     @unique
+  u2kBalance    Float      @default(0)
+  user          User       @relation(fields: [userId], references: [id])
+  transactions  BlockchainTransaction[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model BlockchainRequest {
+  id               String   @id @default(uuid())
+  billId           String   @unique
+  bill             Bill     @relation(fields: [billId], references: [id])
+  blockchainBillId String?
+  transactionHash  String?  @unique
+  status           BlockchainTxStatus @default(PENDING)
+  amount           Float
+  cryptoAmount     Float
+  paymentType      PaymentType @default(NATIVE)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  transactions     BlockchainTransaction[]
+}
+
+model BlockchainTransaction {
+  id                String    @id @default(uuid())
+  transactionHash   String    @unique
+  from              String
+  to                String
+  amount            Float
+  status            BlockchainTxStatus
+  cryptoWalletId    String
+  cryptoWallet      CryptoWallet @relation(fields: [cryptoWalletId], references: [id])
+  blockchainRequestId String?
+  blockchainRequest BlockchainRequest? @relation(fields: [blockchainRequestId], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+enum BlockchainTxStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  REJECTED
+}
+
+enum PaymentType {
+  NATIVE
+  U2K_TOKEN
+}
+
+model Recipient {
+  id            String @id @default(uuid())
+  name          String
+  accountNumber String
+  bankCode      String
+  recipientCode String @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
 model Payment {
   id        String   @id @default(uuid())
   email     String
