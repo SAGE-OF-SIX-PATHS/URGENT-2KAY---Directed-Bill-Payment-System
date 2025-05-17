@@ -12,11 +12,15 @@ import providerRoutes from "./routes/provider.route";
 import userRoutes from "./routes/user.routes";
 
 import bodyParser from "body-parser";
-import paystackRoutes from "./routes/payment.routes";
+import paystackRoutes from "./routes/paymentRoutes";
 import { PORT } from "./config/paystack";
 import { emailRouter } from "./routes/emailRoutes";
-import { loggerMiddleware } from './middlewares/emailLoggerMiddleware';
-import { errorHandler } from './middlewares/emailErrorMiddleware';
+import { loggerMiddleware } from "./middlewares/emailLoggerMiddleware";
+import { errorHandler } from "./middlewares/emailErrorMiddleware";
+import paymentRoutes from "./routes/paymentRoutes";
+import recipientRoutes from "./routes/recipientRoutes";
+import { processBulkTransfers } from "./jobs/processBulkTransfers";
+import bulkTransferRouter from "./routes/bulkTransferRouter";
 
 // Blockchain routes
 import blockchainRoutes from './routes/blockchain.routes';
@@ -29,22 +33,24 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Improved CORS config with dynamic origin checking
+// ✅ CORS config with dynamic origin checking
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://web-dash-spark.vercel.app"
+  "https://web-dash-spark.vercel.app",
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 
 // Setup session middleware BEFORE passport
 app.use(
@@ -72,14 +78,14 @@ app.use("/api/sponsorships", sponsorshipRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api", providerRoutes);
 app.use("/api/users", userRoutes);
-
-app.use("/api/email", emailRouter);
+app.use('/api/email', emailRouter);
 app.use("/transaction", paystackRoutes);
-
+app.use("/api/payments", paymentRoutes);
+app.use("/api", recipientRoutes);
+app.use("/api", bulkTransferRouter);
 // Blockchain Routes
 app.use("/blockchain", blockchainRoutes);
 app.use("/bills", billsRoutes);
-
 // Error Handling (should be last middleware)
 app.use(errorHandler);
 
@@ -130,3 +136,4 @@ async function startServer() {
 }
 
 startServer();
+// processBulkTransfers(); // Start the bulk transfer job

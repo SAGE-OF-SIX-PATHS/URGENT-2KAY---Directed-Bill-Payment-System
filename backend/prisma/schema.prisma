@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -136,6 +135,8 @@ model Payment {
   id        String   @id @default(uuid())
   email     String
   amount    Float
+  status    String   @default("PENDING")
+  billId    String
   reference String   @unique
   status    String   @default("pending") // "pending", "success", "failed"
   splitCode String? // For split payment
@@ -252,4 +253,115 @@ model Recipient {
   recipientCode String @unique
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+model Payment {
+  id        String   @id @default(uuid())
+  email     String
+  amount    Float
+  reference String   @unique
+  status    String   @default("pending") // "pending", "success", "failed"
+  splitCode String? // For split payment
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AirtimeTransaction {
+  id        String   @id @default(uuid())
+  phone     String
+  amount    Float
+  network   String
+  reference String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Subaccount {
+  id               String   @id @default(uuid())
+  businessName     String
+  bankCode         String
+  accountNumber    String
+  percentageCharge Float
+  subaccountCode   String   @unique
+  createdAt        DateTime @default(now())
+  lastPaidAt    DateTime?  @map("last_paid_at")
+  subaccountSplits SubaccountSplit[] // 👈 back-relation added
+}
+
+model SubaccountSplit {
+  id           String @id @default(uuid())
+  subaccountId String
+  splitGroupId String
+  share        Float
+
+  subaccount Subaccount @relation(fields: [subaccountId], references: [id])
+  splitGroup SplitGroup @relation(fields: [splitGroupId], references: [id])
+}
+
+model SplitGroup {
+  id               String            @id @default(uuid())
+  name             String
+  type             String // e.g., "percentage"
+  currency         String // "NGN"
+  splitCode        String            @unique
+  bearerType       String? 
+  bearerSubaccount String
+  subaccounts      SubaccountSplit[]
+  createdAt        DateTime          @default(now())
+}
+
+model Transfer {
+  id             String   @id @default(uuid())
+  name           String
+  accountNumber  String
+  bankName       String
+  bankCode       String
+  recipientCode  String
+  amount         Float
+  reason         String
+  reference      String?   
+  status         String
+  batchId        String?      // ✅ Must be optional
+  batch          Batch?       @relation(fields: [batchId], references: [id])
+  createdAt      DateTime @default(now())
+}
+
+model SplitPayment {
+  id          String   @id @default(uuid())
+  email       String
+  amount      Float
+  splitCode   String
+  reference   String   @unique
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+}
+
+model Batch {
+  id             String         @id @default(cuid())
+  createdAt      DateTime       @default(now())
+  status         String
+  transfers      Transfer[]
+  bulkTransfers  BulkTransfer[]
+}
+
+model BulkTransfer {
+  id             String   @id @default(uuid())
+  amount         Int
+  status         String
+  reference      String
+  reason         String
+  recipientCode  String
+  transferCode   String
+  createdAt      DateTime @default(now())
+  batchId        String
+  batch          Batch    @relation(fields: [batchId], references: [id])
+}
+
+model Recipient {
+  id             Int      @id @default(autoincrement())
+  name           String
+  accountNumber  String
+  bankName       String
+  bankCode       String
+  recipientCode  String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

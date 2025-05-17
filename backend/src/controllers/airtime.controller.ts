@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import axios from "axios";
 import { PAYSTACK_SECRET_KEY } from "../config/paystack";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // Setup Paystack API instance
 const paystackAPI = axios.create({
@@ -47,6 +50,17 @@ export const purchaseAirtime = async (
                     });
 
                     const { authorization_url } = response.data.data;
+
+                    // ✅ Save AirtimeTransaction to DB
+                    await prisma.airtimeTransaction.create({
+                              data: {
+                                        phone,
+                                        amount,
+                                        network,
+                                        reference,
+                              },
+                    });
+
                     res.json({ authorizationUrl: authorization_url });
           } catch (error: any) {
                     console.error("Airtime Error:", error.response?.data || error.message);

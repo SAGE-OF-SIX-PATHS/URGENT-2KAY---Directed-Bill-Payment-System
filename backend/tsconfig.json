@@ -15,6 +15,9 @@
     "noImplicitAny": false,
     "typeRoots": ["./types", "./node_modules/@types"]
   },
-  "include": ["src/**/*.ts","src", "src/types"],
+  "include": ["src/**/*.ts","src", "src/types","src",
+    "src/controllers/subaccount.ts",
+    "prisma"
+  ],
   "exclude": ["node_modules", "dist"]
 }
