@@ -1,5 +1,6 @@
 export interface CreateBillDto {
     billName: string
+    description: string
     type: string
     note?: string
     amount: number
@@ -7,5 +8,5 @@ export interface CreateBillDto {
     dueDate?: string
     providerId?: string
     requestId?: string 
-    }
+}
   

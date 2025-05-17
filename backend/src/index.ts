@@ -24,7 +24,6 @@ import bulkTransferRouter from "./routes/bulkTransferRouter";
 
 // Blockchain routes
 import blockchainRoutes from './routes/blockchain.routes';
-import billsRoutes from './routes/bills.routes';
 import blockchainService from './services/blockchain.service';
 
 const prisma = new PrismaClient();
@@ -35,7 +34,7 @@ const app = express();
 
 // ✅ CORS config with dynamic origin checking
 const allowedOrigins = [
-  "http://localhost:5173",
+  "http://localhost:8081",
   "https://web-dash-spark.vercel.app",
 ];
 
@@ -83,9 +82,10 @@ app.use("/transaction", paystackRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api", recipientRoutes);
 app.use("/api", bulkTransferRouter);
+
 // Blockchain Routes
 app.use("/blockchain", blockchainRoutes);
-app.use("/bills", billsRoutes);
+
 // Error Handling (should be last middleware)
 app.use(errorHandler);
 
