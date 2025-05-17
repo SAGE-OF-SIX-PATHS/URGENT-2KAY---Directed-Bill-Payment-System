@@ -1,7 +1,3 @@
-﻿<h1 align=center>URGENT2KAY</h1>
-<h2 align=center>URGENT-2KAY---Directed-Bill-Payment-System for accountability and ease of payment</h2>
-
-```markdown
 <!-- PROJECT TITLE / BADGES ------------------------------------------------->
 <h1 align="center">
   🚀  URGENT2KAY
@@ -12,8 +8,8 @@
   End-to-end platform for creating bills &amp; bundles, collecting payments
   through Paystack, and paying multiple service providers in one shot with
   secure bulk transfers.<br />
-  <i>TypeScript · Node · Prisma · React · Solidity · Ethers.js</i>
-  <p> This github reo contains only the backend and web3 implementation</p>
+  <i>TypeScript · Node · express · Prisma · postgreSQL · React · Solidity · Ethers.js</i>
+  <p> This github repository contains only the backend and web3 implementation</p>
 </p>
 
 <p align="center">
@@ -259,7 +255,7 @@ npm run build      # production build
 
 ## 🙏 Credits
 
-Built with ❤️ by **SAGE-OF-SIX-PATHS** and contributors
+Built by **Learnable 24 group2 interns** and developed by the contributors on this repo and on the frontend repo.
 Special thanks to Paystack DevRel and the open-source community.
 
 ---
@@ -270,11 +266,5 @@ Special thanks to Paystack DevRel and the open-source community.
 ```
 
 ---
-
-### How to use
-
-1. Copy everything between the \`\`\`markdown fences into `README.md`.
-2. Adjust repo links (`github.com/<your-org>/...`) if necessary.
-3. Commit & push – GitHub will render all tables, dropdowns, and code blocks perfectly.
 
 Feel free to tweak wording or add badges, but this is production-ready 🚀
