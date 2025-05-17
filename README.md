@@ -1,7 +1,6 @@
 ﻿<h1 align=center>URGENT2KAY</h1>
 <h2 align=center>URGENT-2KAY---Directed-Bill-Payment-System for accountability and ease of payment</h2>
 
-```markdown
 <!-- PROJECT TITLE / BADGES ------------------------------------------------->
 <h1 align="center">
   🚀  URGENT2KAY
