@@ -255,7 +255,7 @@ npm run build      # production build
 
 ## 🙏 Credits
 
-Built with ❤️ by **SAGE-OF-SIX-PATHS** and contributors
+Built by **Learnable 24 group2 interns** and developed by the contributors on this repo and on the frontend repo.
 Special thanks to Paystack DevRel and the open-source community.
 
 ---
@@ -266,11 +266,5 @@ Special thanks to Paystack DevRel and the open-source community.
 ```
 
 ---
-
-### How to use
-
-1. Copy everything between the \`\`\`markdown fences into `README.md`.
-2. Adjust repo links (`github.com/<your-org>/...`) if necessary.
-3. Commit & push – GitHub will render all tables, dropdowns, and code blocks perfectly.
 
 Feel free to tweak wording or add badges, but this is production-ready 🚀
