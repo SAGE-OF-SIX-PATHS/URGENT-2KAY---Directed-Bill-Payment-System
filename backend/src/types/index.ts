@@ -1,12 +1,8 @@
 import { User } from '@prisma/client';
 
-// Extend Express Request type
-declare global {
-  namespace Express {
-    interface Request {
-      user?: User;
-    }
-  }
+// Instead of augmenting Express.Request, create helper functions to safely use request.user
+export function getUserFromRequest(req: any): User | undefined {
+  return req.user as User;
 }
 
 // Custom blockchain request type
