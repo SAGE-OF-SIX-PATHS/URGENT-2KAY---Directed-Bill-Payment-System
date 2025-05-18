@@ -8,8 +8,15 @@ export const BLOCKCHAIN_CONFIG = {
   CHAIN_ID: Number(process.env.CHAIN_ID || '11155111'), // Sepolia testnet
   TOKEN_CONTRACT_ADDRESS: process.env.U2K_TOKEN_CONTRACT_ADDRESS || '',
   BILL_PAYMENT_CONTRACT_ADDRESS: process.env.BILL_PAYMENT_CONTRACT_ADDRESS || '',
+  USDT_CONTRACT_ADDRESS: process.env.USDT_CONTRACT_ADDRESS || '',
   PRIVATE_KEY: process.env.BLOCKCHAIN_PRIVATE_KEY || '',
 };
+
+// Standard ERC20 ABI (minimal interface for balance checks)
+export const ERC20_ABI = [
+  {"constant":true,"inputs":[{"name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},
+  {"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"}
+];
 
 // ABI for U2KToken.sol
 export const U2K_TOKEN_ABI = [

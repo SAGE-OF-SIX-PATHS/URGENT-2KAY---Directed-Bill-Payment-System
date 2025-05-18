@@ -32,5 +32,10 @@ router.get('/blockchain-bills/:blockchainBillId', blockchainController.getBillDe
 router.get('/sponsors/:userId/bills', blockchainController.getSponsorBillsByUserId);
 router.get('/sponsor-bills/:address', blockchainController.getSponsorBills);
 router.get('/beneficiary-bills/:address', blockchainController.getBeneficiaryBills);
+router.get('/sponsors/:sponsorAddress/metrics', blockchainController.getSponsorMetrics);
+
+// Notification routes
+router.get('/notifications', blockchainController.getBlockchainNotifications);
+router.put('/notifications/:notificationId/read', blockchainController.markNotificationAsRead);
 
 export default router; 

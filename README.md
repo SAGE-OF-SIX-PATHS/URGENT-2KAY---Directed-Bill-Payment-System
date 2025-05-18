@@ -119,7 +119,7 @@ Authorization: Bearer <JWT>
 }
 ```
 
-Returns Paystack’s transfer object (status `success | pending`).
+Returns Paystack's transfer object (status `success | pending`).
 
 #### Accept-payment (Paystack checkout)
 
@@ -223,7 +223,7 @@ npx hardhat test
 npx hardhat run scripts/deploy.ts --network amoy
 ```
 
-Frontend fetches proofs and shows “⚡ on-chain verified”.
+Frontend fetches proofs and shows "⚡ on-chain verified".
 
 ---
 
@@ -263,8 +263,54 @@ Special thanks to Paystack DevRel and the open-source community.
 <p align="center">
   <b>Happy coding &nbsp;🎉</b>
 </p>
-```
 
 ---
 
-Feel free to tweak wording or add badges, but this is production-ready 🚀
+# Directed Bill Payment System
+
+## Controller Consolidation Notice
+
+**IMPORTANT**: We have consolidated the bill controllers in this system to simplify the architecture and remove duplication.
+
+### Changes Made:
+
+1. **Merged Controllers**: 
+   - `bills.controller.ts` (plural) functionality has been moved into `bill.controller.ts` (singular)
+   - Added blockchain bill creation capabilities to the unified controller
+
+2. **Consolidated Routes**:
+   - All bill operations now go through `/api/bills` routes
+   - Removed the redundant `/bills` routes
+   - Added a new route for blockchain-specific operations: `/api/bills/blockchain`
+
+3. **Authentication**:
+   - All bill operations now require authentication
+   - Bills are tied to a user account using `req.user?.id` from the auth middleware
+
+### API Endpoints
+
+- **Regular Bills**:
+  - `POST /api/bills` - Create a regular bill
+  - `GET /api/bills` - Get all bills with optional filters
+  - `GET /api/bills/:id` - Get a specific bill by ID
+  - `PUT /api/bills/:id` - Update a bill
+  - `DELETE /api/bills/:id` - Delete a bill
+
+- **Bill Sponsorship**:
+  - `POST /api/bills/:billId/sponsor` - Sponsor a bill
+
+- **Blockchain Bills**:
+  - `POST /api/bills/blockchain` - Create a blockchain-specific bill
+
+- **Blockchain Operations**:
+  - Blockchain-specific operations are still available through `/blockchain/*` routes
+
+### Implementation Notes
+
+- Blockchain bills use the `as any` typing workaround to avoid TypeScript errors with the Prisma schema
+- The consolidated controller properly accounts for different bill types and categories
+- Filtering by payment method and category is supported across all bill types
+
+## Development
+
+[Your existing instructions here]

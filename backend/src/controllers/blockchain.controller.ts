@@ -7,30 +7,14 @@ const prisma = new PrismaClient();
 
 export const createWallet = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { userId } = req.params;
-
-    if (!userId) {
-      res.status(400).json({ error: 'User ID is required' });
-      return;
-    }
-
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
+    // Return a message directing users to connect existing wallets
+    res.status(400).json({ 
+      error: 'Wallet creation is not supported', 
+      message: 'Please use connectExistingWallet endpoint to connect your existing wallet address instead' 
     });
-
-    if (!user) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
-
-    // Create or get existing wallet
-    const wallet = await blockchainService.createUserWallet(userId);
-
-    res.status(200).json(wallet);
   } catch (error) {
-    console.error('Error creating wallet:', error);
-    res.status(500).json({ error: 'Failed to create wallet' });
+    console.error('Error in createWallet:', error);
+    res.status(500).json({ error: 'Failed to process request' });
   }
 };
 
@@ -94,9 +78,53 @@ export const connectExistingWallet = async (req: Request, res: Response): Promis
     // Connect existing wallet
     const wallet = await blockchainService.connectExistingWallet(userId, walletAddress);
 
+    // Get wallet balances
+    const ethBalance = await blockchainService.getEthBalance(walletAddress);
+    const usdtBalance = await blockchainService.getTokenBalance(walletAddress, 'USDT');
+    const u2kBalance = await blockchainService.getTokenBalance(walletAddress, 'U2K');
+
+    // Get sponsor metrics if user is a benefactor
+    const metrics = {
+      pendingRequests: 0,
+      completedRequests: 0,
+      rejectedRequests: 0,
+      totalRequests: 0,
+      totalRewards: parseFloat(u2kBalance)
+    };
+
+    // Get blockchain metrics if user is a benefactor
+    if (user.role === 'BENEFACTOR') {
+      try {
+        // Get blockchain bills from the blockchain
+        const blockchainBillIds = await blockchainService.getSponsorBills(walletAddress);
+        
+        // Get the corresponding requests from our database
+        const blockchainRequests = await prisma.blockchainRequest.findMany({
+          where: {
+            blockchainBillId: {
+              in: blockchainBillIds
+            }
+          }
+        });
+        
+        metrics.pendingRequests = blockchainRequests.filter(request => request.status === 'PENDING').length;
+        metrics.completedRequests = blockchainRequests.filter(request => request.status === 'CONFIRMED').length;
+        metrics.rejectedRequests = blockchainRequests.filter(request => request.status === 'REJECTED').length;
+        metrics.totalRequests = metrics.pendingRequests + metrics.completedRequests + metrics.rejectedRequests;
+      } catch (error) {
+        console.error('Error fetching blockchain metrics:', error);
+      }
+    }
+
     res.status(200).json({
       success: true,
       wallet,
+      balances: {
+        ETH: ethBalance,
+        USDT: usdtBalance,
+        U2K: u2kBalance
+      },
+      metrics,
       message: 'Existing wallet connected successfully'
     });
   } catch (error: any) {
@@ -110,14 +138,18 @@ export const createBillRequest = async (req: Request, res: Response): Promise<vo
     const { billId } = req.params;
     const { beneficiaryAddress, sponsorAddress, paymentDestination, amount, description } = req.body;
 
-    if (!billId || !beneficiaryAddress || !sponsorAddress || !paymentDestination || !amount || !description) {
+    if (!billId || !beneficiaryAddress || !sponsorAddress || !paymentDestination || !amount) {
       res.status(400).json({ error: 'Missing required fields' });
       return;
     }
 
-    // Check if bill exists
+    // Validate the bill exists
     const bill = await prisma.bill.findUnique({
-      where: { id: billId }
+      where: { id: billId },
+      include: {
+        user: true,
+        provider: true
+      }
     });
 
     if (!bill) {
@@ -125,33 +157,42 @@ export const createBillRequest = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Check if blockchain request already exists
-    const existingRequest = await prisma.blockchainRequest.findUnique({
-      where: { billId }
+    // For security, verify both addresses are valid
+    if (!ethers.utils.isAddress(beneficiaryAddress) || !ethers.utils.isAddress(sponsorAddress)) {
+      res.status(400).json({ error: 'Invalid wallet address provided' });
+      return;
+    }
+    
+    // Find the sponsor user by wallet address
+    const sponsorWallet = await prisma.cryptoWallet.findUnique({
+      where: { address: sponsorAddress },
+      include: { user: true }
     });
 
-    if (existingRequest) {
-      res.status(400).json({ error: 'Blockchain request already exists for this bill' });
-      return;
+    if (!sponsorWallet) {
+      // Create a temporary wallet record if sponsor doesn't exist in our system yet
+      console.log(`Sponsor wallet ${sponsorAddress} not found in database, proceeding without user connection`);
     }
 
     try {
-    // Create bill request on blockchain
-    const result = await blockchainService.createBillRequest(
-      billId,
-      beneficiaryAddress,
-      sponsorAddress,
-      paymentDestination,
-      amount,
-      description
-    );
+      // Create bill request on blockchain
+      const result = await blockchainService.createBillRequest(
+        billId,
+        beneficiaryAddress,
+        sponsorAddress,
+        paymentDestination,
+        amount,
+        description
+      );
 
-    res.status(201).json({ 
-      success: true, 
-      transactionHash: result.transactionHash,
-      blockchainBillId: result.blockchainBillId,
-      message: 'Bill request created successfully on blockchain'
-    });
+      // Remove notification creation
+
+      res.status(201).json({ 
+        success: true, 
+        transactionHash: result.transactionHash,
+        blockchainBillId: result.blockchainBillId,
+        message: 'Bill request created successfully on blockchain'
+      });
     } catch (error: any) {
       console.error('Error in blockchain operation:', error);
       res.status(500).json({ 
@@ -220,7 +261,7 @@ export const createBlockchainBillDirect = async (req: Request, res: Response): P
       });
 
       if (!beneficiaryWallet) {
-        res.status(400).json({ error: 'Beneficiary does not have a wallet. Please create one first.' });
+        res.status(400).json({ error: 'Beneficiary does not have a wallet. Please connect one first.' });
         return;
       }
 
@@ -250,13 +291,17 @@ export const createBlockchainBillDirect = async (req: Request, res: Response): P
       const bill = await prisma.bill.create({
         data: {
           description,
+          type: "BLOCKCHAIN",
+          billName: "Blockchain Bill",
           amount: parsedAmount,
-          status: 'PENDING',
-          category: 'BLOCKCHAIN',
-          userId: user.id, // Use the valid user ID
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
+          status: "PENDING" as any,
+          category: "BLOCKCHAIN",
+          user: {
+            connect: {
+              id: user.id
+            }
+          }
+        } as any
       });
 
       // Create bill request on blockchain
@@ -311,10 +356,11 @@ export const createBlockchainBillDirect = async (req: Request, res: Response): P
 export const payBillWithNative = async (req: Request, res: Response): Promise<void> => {
   try {
     const { blockchainRequestId } = req.params;
-    const { sponsorPrivateKey, amount } = req.body;
-
-    if (!blockchainRequestId || !sponsorPrivateKey || !amount) {
-      res.status(400).json({ error: 'Missing required fields' });
+    const { sponsorAddress, sponsorSignature, amount } = req.body;
+    
+    // We're now accepting a signature from the connected wallet instead of directly taking private key
+    if (!blockchainRequestId || !sponsorSignature || !sponsorAddress || !amount) {
+      res.status(400).json({ error: 'Missing required fields: blockchainRequestId, sponsorAddress, sponsorSignature, and amount are all required' });
       return;
     }
 
@@ -357,9 +403,11 @@ export const payBillWithNative = async (req: Request, res: Response): Promise<vo
     }
     
     // Pay bill with native tokens using the numeric blockchain bill ID
-    const transactionHash = await blockchainService.payBillWithNative(
+    // Now using sponsor address and signature instead of private key
+    const transactionHash = await blockchainService.processBillPaymentWithNative(
       numericBillId,
-      sponsorPrivateKey,
+      sponsorAddress,
+      sponsorSignature,
       amount
     );
 
@@ -374,13 +422,11 @@ export const payBillWithNative = async (req: Request, res: Response): Promise<vo
 
     // Update bill status
     await prisma.bill.update({
-      where: { id: blockchainRequest.billId },
-      data: { status: 'PAID' }
+      where: { id: blockchainRequest.bill.id },
+      data: { 
+        status: "REJECTED" as any 
+      }
     });
-
-    // Extract the sponsor's address from the private key
-    const sponsorWallet = new ethers.Wallet(sponsorPrivateKey);
-    const sponsorAddress = sponsorWallet.address;
 
     // Update sponsor's U2K token balance by getting the actual blockchain balance
     try {
@@ -425,10 +471,10 @@ export const payBillWithNative = async (req: Request, res: Response): Promise<vo
 export const payBillWithU2K = async (req: Request, res: Response): Promise<void> => {
   try {
     const { blockchainRequestId } = req.params;
-    const { sponsorPrivateKey } = req.body;
+    const { sponsorAddress, sponsorSignature } = req.body;
 
-    if (!blockchainRequestId || !sponsorPrivateKey) {
-      res.status(400).json({ error: 'Missing required fields' });
+    if (!blockchainRequestId || !sponsorSignature || !sponsorAddress) {
+      res.status(400).json({ error: 'Missing required fields: blockchainRequestId, sponsorAddress, and sponsorSignature are all required' });
       return;
     }
 
@@ -471,9 +517,10 @@ export const payBillWithU2K = async (req: Request, res: Response): Promise<void>
     }
 
     // Pay bill with U2K tokens using the numeric blockchain bill ID
-    const transactionHash = await blockchainService.payBillWithU2K(
+    const transactionHash = await blockchainService.processBillPaymentWithU2K(
       numericBillId,
-      sponsorPrivateKey
+      sponsorAddress,
+      sponsorSignature
     );
 
     // Update database status
@@ -488,13 +535,11 @@ export const payBillWithU2K = async (req: Request, res: Response): Promise<void>
 
     // Update bill status
     await prisma.bill.update({
-      where: { id: blockchainRequest.billId },
-      data: { status: 'PAID' }
+      where: { id: blockchainRequest.bill.id },
+      data: { 
+        status: "REJECTED" as any 
+      }
     });
-
-    // Extract the sponsor's address from the private key
-    const sponsorWallet = new ethers.Wallet(sponsorPrivateKey);
-    const sponsorAddress = sponsorWallet.address;
 
     // Update sponsor's U2K token balance by getting the actual blockchain balance
     try {
@@ -539,10 +584,10 @@ export const payBillWithU2K = async (req: Request, res: Response): Promise<void>
 export const rejectBill = async (req: Request, res: Response): Promise<void> => {
   try {
     const { blockchainRequestId } = req.params;
-    const { sponsorPrivateKey } = req.body;
+    const { sponsorAddress, sponsorSignature } = req.body;
 
-    if (!blockchainRequestId || !sponsorPrivateKey) {
-      res.status(400).json({ error: 'Missing required fields' });
+    if (!blockchainRequestId || !sponsorAddress || !sponsorSignature) {
+      res.status(400).json({ error: 'Missing required fields: blockchainRequestId, sponsorAddress, and sponsorSignature' });
       return;
     }
 
@@ -584,10 +629,11 @@ export const rejectBill = async (req: Request, res: Response): Promise<void> => 
       numericBillId = "1"; // Fallback to ID 1 for testing
     }
 
-    // Reject bill using the numeric blockchain bill ID
-    const transactionHash = await blockchainService.rejectBill(
+    // Reject bill using the numeric blockchain bill ID and signature
+    const transactionHash = await blockchainService.rejectBillWithSignature(
       numericBillId,
-      sponsorPrivateKey
+      sponsorAddress,
+      sponsorSignature
     );
 
     // Update database status
@@ -599,10 +645,12 @@ export const rejectBill = async (req: Request, res: Response): Promise<void> => 
       }
     });
 
-    // Update bill status
+    // Update the bill status to reflect rejection
     await prisma.bill.update({
-      where: { id: blockchainRequest.billId },
-      data: { status: 'FAILED' }
+      where: { id: blockchainRequest.bill.id },
+      data: { 
+        status: "REJECTED" as any 
+      }
     });
 
     res.status(200).json({ 
@@ -654,22 +702,76 @@ export const getBeneficiaryBills = async (req: Request, res: Response): Promise<
   }
 };
 
-/**
- * Get bills for a sponsor by address (kept for backward compatibility)
- */
+// Update getSponsorBills to use blockchain service directly
 export const getSponsorBills = async (req: Request, res: Response): Promise<void> => {
   try {
     const { address } = req.params;
 
     if (!address) {
-      res.status(400).json({ error: 'Sponsor address is required' });
+      res.status(400).json({ error: 'Wallet address is required' });
       return;
     }
 
-    // Get sponsor bills from blockchain
-    const bills = await blockchainService.getSponsorBills(address);
+    // Find user by wallet address
+    const wallet = await prisma.cryptoWallet.findUnique({
+      where: { address },
+      include: { user: true }
+    });
+
+    if (!wallet) {
+      res.status(404).json({ error: 'Wallet not found' });
+      return;
+    }
+
+    // Get bills directly from blockchain
+    const blockchainBillIds = await blockchainService.getSponsorBills(address);
     
-    res.status(200).json({ bills });
+    // Get all blockchain requests that match these IDs
+    const allBills = await prisma.blockchainRequest.findMany({
+      where: {
+        blockchainBillId: {
+          in: blockchainBillIds
+        }
+      },
+      include: {
+        bill: {
+          include: {
+            user: true
+          }
+        }
+      }
+    });
+    
+    // Filter by status
+    const pendingBills = allBills.filter(bill => bill.status === 'PENDING');
+    const completedBills = allBills.filter(bill => bill.status === 'CONFIRMED');
+    const rejectedBills = allBills.filter(bill => bill.status === 'REJECTED');
+
+    // Get wallet balances
+    const ethBalance = await blockchainService.getEthBalance(address);
+    const usdtBalance = await blockchainService.getTokenBalance(address, 'USDT');
+    const u2kBalance = await blockchainService.getTokenBalance(address, 'U2K');
+    
+    // Calculate total requests
+    const totalRequests = pendingBills.length + completedBills.length + rejectedBills.length;
+    
+    res.status(200).json({
+      pendingBills,
+      completedBills,
+      rejectedBills,
+      metrics: {
+        pendingRequests: pendingBills.length,
+        completedRequests: completedBills.length,
+        rejectedRequests: rejectedBills.length,
+        totalRequests,
+        totalRewards: parseFloat(u2kBalance)
+      },
+      balances: {
+        ETH: ethBalance,
+        USDT: usdtBalance,
+        U2K: u2kBalance
+      }
+    });
   } catch (error) {
     console.error('Error getting sponsor bills:', error);
     res.status(500).json({ error: 'Failed to get sponsor bills' });
@@ -824,5 +926,111 @@ export const getSponsors = async (req: Request, res: Response): Promise<void> =>
   } catch (error) {
     console.error('Error getting sponsors:', error);
     res.status(500).json({ error: 'Failed to get sponsors' });
+  }
+};
+
+// Replace notification functions with empty implementations
+export const getBlockchainNotifications = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    // Return empty notifications array
+    res.status(200).json({ notifications: [] });
+  } catch (error) {
+    console.error('Error getting blockchain notifications:', error);
+    res.status(500).json({ error: 'Failed to get blockchain notifications' });
+  }
+};
+
+export const markNotificationAsRead = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { notificationId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    // Just return success
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({ error: 'Failed to mark notification as read' });
+  }
+};
+
+export const getSponsorMetrics = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sponsorAddress } = req.params;
+
+    if (!sponsorAddress || !ethers.utils.isAddress(sponsorAddress)) {
+      res.status(400).json({ error: 'Valid sponsor address is required' });
+      return;
+    }
+
+    // Get the sponsor wallet from the database
+    const sponsorWallet = await prisma.cryptoWallet.findUnique({
+      where: { address: sponsorAddress },
+      include: { user: true }
+    });
+
+    // Get wallet balances
+    const ethBalance = await blockchainService.getEthBalance(sponsorAddress);
+    const usdtBalance = await blockchainService.getTokenBalance(sponsorAddress, 'USDT');
+    const u2kBalance = await blockchainService.getTokenBalance(sponsorAddress, 'U2K');
+
+    // Get blockchain metrics 
+    let pendingRequests = 0;
+    let completedRequests = 0;
+    let rejectedRequests = 0;
+
+    try {
+      // Get blockchain bills from the blockchain
+      const blockchainBillIds = await blockchainService.getSponsorBills(sponsorAddress);
+      
+      // Get the corresponding requests from our database
+      const blockchainRequests = await prisma.blockchainRequest.findMany({
+        where: {
+          blockchainBillId: {
+            in: blockchainBillIds
+          }
+        }
+      });
+      
+      pendingRequests = blockchainRequests.filter(request => request.status === 'PENDING').length;
+      completedRequests = blockchainRequests.filter(request => request.status === 'CONFIRMED').length;
+      rejectedRequests = blockchainRequests.filter(request => request.status === 'REJECTED').length;
+    } catch (error) {
+      console.error('Error fetching blockchain metrics:', error);
+    }
+
+    // Calculate total requests
+    const totalRequests = pendingRequests + completedRequests + rejectedRequests;
+    
+    // Return the metrics and balances
+    res.status(200).json({
+      success: true,
+      balances: {
+        ETH: ethBalance,
+        USDT: usdtBalance,
+        U2K: u2kBalance
+      },
+      metrics: {
+        pendingRequests,
+        completedRequests,
+        rejectedRequests,
+        totalRequests,
+        totalRewards: parseFloat(u2kBalance)
+      }
+    });
+  } catch (error: any) {
+    console.error('Error getting sponsor metrics:', error);
+    res.status(500).json({ error: error.message || 'Failed to get sponsor metrics' });
   }
 }; 

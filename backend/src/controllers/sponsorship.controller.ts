@@ -1,9 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../lib/prisma";
-
-
-
-
+import { getUserFromRequest } from "../types";
 
 export const getUserSponsorships = async (
   req: Request,
@@ -11,7 +8,8 @@ export const getUserSponsorships = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const user = getUserFromRequest(req);
+    const userId = user?.id;
 
     if (!userId) {
       res.status(401).json({ message: "Unauthorized" });

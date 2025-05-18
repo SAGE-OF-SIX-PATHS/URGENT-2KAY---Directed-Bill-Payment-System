@@ -6,7 +6,8 @@ getAllBills,
 getBillById,
 updateBill,
 deleteBill,
-sponsorBill
+sponsorBill,
+createBlockchainBill
 } from "../controllers/bill.controller";
 import { isAuthenticated } from "../middlewares/auth";
 
@@ -19,5 +20,7 @@ router.put("/:id", isAuthenticated, updateBill);
 router.delete("/:id", isAuthenticated, deleteBill); 
 
 router.post('/:billId/sponsor', isAuthenticated, sponsorBill);
+
+router.post('/blockchain', isAuthenticated, createBlockchainBill);
 
 export default router;

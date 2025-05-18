@@ -3,7 +3,8 @@ import { PrismaClient } from '@prisma/client';
 import { 
   BLOCKCHAIN_CONFIG, 
   U2K_TOKEN_ABI, 
-  BILL_PAYMENT_SYSTEM_ABI 
+  BILL_PAYMENT_SYSTEM_ABI,
+  ERC20_ABI
 } from '../config/blockchain';
 
 const prisma = new PrismaClient();
@@ -13,6 +14,7 @@ export class BlockchainService {
   public billPaymentContract: ethers.Contract;
   private wallet: ethers.Wallet;
   private tokenContract: ethers.Contract;
+  private usdtContract?: ethers.Contract;
 
   constructor() {
     this.provider = new ethers.providers.JsonRpcProvider(BLOCKCHAIN_CONFIG.RPC_URL);
@@ -37,6 +39,15 @@ export class BlockchainService {
       this.wallet
     );
 
+    // Initialize USDT contract if available
+    if (BLOCKCHAIN_CONFIG.USDT_CONTRACT_ADDRESS) {
+      this.usdtContract = new ethers.Contract(
+        BLOCKCHAIN_CONFIG.USDT_CONTRACT_ADDRESS,
+        ERC20_ABI,
+        this.wallet
+      );
+    }
+
     this.billPaymentContract = new ethers.Contract(
       BLOCKCHAIN_CONFIG.BILL_PAYMENT_CONTRACT_ADDRESS,
       BILL_PAYMENT_SYSTEM_ABI,
@@ -45,35 +56,10 @@ export class BlockchainService {
   }
 
   /**
-   * Create a new CryptoWallet for a user
+   * Create a new CryptoWallet is deprecated - Only support connecting existing wallets
    */
   async createUserWallet(userId: string): Promise<any> {
-    // Check if the user already has a wallet
-    const existingWallet = await prisma.cryptoWallet.findUnique({
-      where: { userId }
-    });
-
-    if (existingWallet) {
-      return existingWallet;
-    }
-
-    // Create a new random wallet
-    const newWallet = ethers.Wallet.createRandom();
-
-    // Store the wallet in the database (do not store private key in production!)
-    const wallet = await prisma.cryptoWallet.create({
-      data: {
-        userId,
-        address: newWallet.address,
-      }
-    });
-
-    return {
-      ...wallet,
-      // Only return these during wallet creation and never store in DB
-      privateKey: newWallet.privateKey,
-      mnemonic: newWallet.mnemonic?.phrase
-    };
+    throw new Error('Wallet creation is not supported. Please use connectExistingWallet instead.');
   }
 
   /**
@@ -115,11 +101,36 @@ export class BlockchainService {
   }
 
   /**
+   * Get native ETH balance for an address
+   */
+  async getEthBalance(address: string): Promise<string> {
+    try {
+      const balance = await this.provider.getBalance(address);
+      return ethers.utils.formatEther(balance);
+    } catch (error) {
+      console.error(`Error getting ETH balance for ${address}:`, error);
+      return "0";
+    }
+  }
+
+  /**
    * Get token balance for an address
    */
-  async getTokenBalance(address: string): Promise<string> {
-    const balance = await this.tokenContract.balanceOf(address);
-    return ethers.utils.formatUnits(balance, 18); // Assuming token has 18 decimals
+  async getTokenBalance(address: string, tokenType = 'U2K'): Promise<string> {
+    try {
+      let balance;
+      if (tokenType === 'USDT' && this.usdtContract) {
+        balance = await this.usdtContract.balanceOf(address);
+        return ethers.utils.formatUnits(balance, 6); // USDT typically has 6 decimals
+      } else {
+        // Default to U2K token
+        balance = await this.tokenContract.balanceOf(address);
+        return ethers.utils.formatUnits(balance, 18); // U2K token has 18 decimals
+      }
+    } catch (error) {
+      console.error(`Error getting ${tokenType} balance for ${address}:`, error);
+      return "0";
+    }
   }
 
   /**
@@ -274,30 +285,21 @@ export class BlockchainService {
     sponsorPrivateKey: string
   ): Promise<string> {
     try {
-      // Create a wallet for the sponsor using their private key
+      // Create a signer from the sponsor's private key
       const sponsorWallet = new ethers.Wallet(sponsorPrivateKey, this.provider);
       
-      // Connect the contracts with the sponsor's wallet
-      const connectedTokenContract = this.tokenContract.connect(sponsorWallet);
-      const connectedBillContract = this.billPaymentContract.connect(sponsorWallet);
-
-      // First approve the bill payment contract to spend tokens
-      const bill = await connectedBillContract.getBill(blockchainBillId);
-      const amount = bill.amount;
-
-      // Approve tokens
-      const approveTx = await connectedTokenContract.approve(
-        BLOCKCHAIN_CONFIG.BILL_PAYMENT_CONTRACT_ADDRESS,
-        amount
-      );
-      await approveTx.wait();
-
-      // Pay the bill with U2K tokens
-      const tx = await connectedBillContract.payBillWithU2K(blockchainBillId);
-
-      // Wait for transaction to be mined
+      // Get the contract connected with the sponsor's wallet
+      const sponsorContract = this.billPaymentContract.connect(sponsorWallet);
+      
+      // Call the contract method to pay the bill with U2K tokens
+      const tx = await sponsorContract.payBillWithTokens(blockchainBillId);
+      
       const receipt = await tx.wait();
-
+      
+      // Get the block timestamp for the transaction
+      const block = await this.provider.getBlock(receipt.blockNumber);
+      const timestamp = block.timestamp;
+      
       return receipt.transactionHash;
     } catch (error) {
       console.error('Error paying bill with U2K tokens:', error);
@@ -328,6 +330,75 @@ export class BlockchainService {
       return receipt.transactionHash;
     } catch (error) {
       console.error('Error rejecting bill:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reject a bill on the blockchain using a signature from the connected wallet
+   */
+  async rejectBillWithSignature(
+    blockchainBillId: string,
+    sponsorAddress: string,
+    sponsorSignature: string
+  ): Promise<string> {
+    try {
+      // Verify the signature is valid for this transaction
+      const message = ethers.utils.solidityKeccak256(
+        ['string', 'address'],
+        [blockchainBillId, sponsorAddress]
+      );
+      
+      const messageHash = ethers.utils.arrayify(message);
+      const recoveredAddress = ethers.utils.verifyMessage(messageHash, sponsorSignature);
+      
+      if (recoveredAddress.toLowerCase() !== sponsorAddress.toLowerCase()) {
+        throw new Error('Invalid signature for sponsor address');
+      }
+      
+      // Use the server wallet to submit the transaction on behalf of the user
+      const tx = await this.billPaymentContract.rejectBillOnBehalf(
+        blockchainBillId,
+        sponsorAddress,
+        sponsorSignature
+      );
+      
+      const receipt = await tx.wait();
+      
+      // Find the blockchain request for this bill
+      const request = await prisma.blockchainRequest.findFirst({
+        where: { blockchainBillId }
+      });
+      
+      // Store this transaction in our database
+      // Find a wallet record for our service wallet
+      const serviceWallet = await prisma.cryptoWallet.findFirst({
+        where: { address: this.wallet.address }
+      });
+      
+      if (serviceWallet && request) {
+        await prisma.blockchainTransaction.create({
+          data: {
+            transactionHash: receipt.transactionHash,
+            from: this.wallet.address,
+            to: BLOCKCHAIN_CONFIG.BILL_PAYMENT_CONTRACT_ADDRESS,
+            amount: 0, // No ETH was sent
+            status: 'REJECTED',
+            cryptoWalletId: serviceWallet.id,
+            blockchainRequestId: request.id
+          }
+        });
+        
+        // Update the blockchain request status
+        await prisma.blockchainRequest.update({
+          where: { id: request.id },
+          data: { status: 'REJECTED' }
+        });
+      }
+      
+      return receipt.transactionHash;
+    } catch (error) {
+      console.error('Error rejecting bill with signature:', error);
       throw error;
     }
   }
@@ -377,6 +448,183 @@ export class BlockchainService {
       return bills.map((id: ethers.BigNumber) => id.toString());
     } catch (error) {
       console.error('Error getting sponsor bills:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process a bill payment using a signature from the connected wallet
+   * This approach allows users to sign transactions with their wallet without exposing private keys
+   */
+  async processBillPaymentWithNative(
+    blockchainBillId: string,
+    sponsorAddress: string,
+    sponsorSignature: string,
+    amount: string
+  ): Promise<string> {
+    try {
+      // Verify the signature is valid for this transaction
+      const message = ethers.utils.solidityKeccak256(
+        ['string', 'uint256', 'address'],
+        [blockchainBillId, ethers.utils.parseEther(amount), sponsorAddress]
+      );
+      
+      const messageHash = ethers.utils.arrayify(message);
+      const recoveredAddress = ethers.utils.verifyMessage(messageHash, sponsorSignature);
+      
+      if (recoveredAddress.toLowerCase() !== sponsorAddress.toLowerCase()) {
+        throw new Error('Invalid signature for sponsor address');
+      }
+      
+      // Use the server wallet to submit the transaction on behalf of the user
+      // This ensures the transaction can be processed without requiring gas from the user
+      const tx = await this.billPaymentContract.payBillWithEthOnBehalf(
+        blockchainBillId,
+        sponsorAddress,
+        sponsorSignature,
+        { value: ethers.utils.parseEther(amount) }
+      );
+      
+      const receipt = await tx.wait();
+      
+      // Find the blockchain request for this bill
+      const request = await prisma.blockchainRequest.findFirst({
+        where: { blockchainBillId }
+      });
+      
+      // Store this transaction in our database
+      // Find a wallet record for our service wallet
+      const serviceWallet = await prisma.cryptoWallet.findFirst({
+        where: { address: this.wallet.address }
+      });
+      
+      if (serviceWallet && request) {
+        await prisma.blockchainTransaction.create({
+          data: {
+            transactionHash: receipt.transactionHash,
+            from: this.wallet.address,
+            to: BLOCKCHAIN_CONFIG.BILL_PAYMENT_CONTRACT_ADDRESS,
+            amount: parseFloat(amount),
+            status: 'CONFIRMED',
+            cryptoWalletId: serviceWallet.id,
+            blockchainRequestId: request.id
+          }
+        });
+      }
+      
+      if (request) {
+        await prisma.blockchainRequest.update({
+          where: { id: request.id },
+          data: { status: 'CONFIRMED' }
+        });
+        
+        // Also update the bill status if we have a reference
+        if (request.billId) {
+          await prisma.bill.update({
+            where: { id: request.billId },
+            data: { status: 'PAID' }
+          });
+        }
+      }
+      
+      return receipt.transactionHash;
+    } catch (error) {
+      console.error('Error processing bill payment with signature:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process a bill payment with U2K tokens using a signature from the connected wallet
+   */
+  async processBillPaymentWithU2K(
+    blockchainBillId: string,
+    sponsorAddress: string,
+    sponsorSignature: string
+  ): Promise<string> {
+    try {
+      // Verify the signature is valid for this transaction
+      const message = ethers.utils.solidityKeccak256(
+        ['string', 'address'],
+        [blockchainBillId, sponsorAddress]
+      );
+      
+      const messageHash = ethers.utils.arrayify(message);
+      const recoveredAddress = ethers.utils.verifyMessage(messageHash, sponsorSignature);
+      
+      if (recoveredAddress.toLowerCase() !== sponsorAddress.toLowerCase()) {
+        throw new Error('Invalid signature for sponsor address');
+      }
+      
+      // Use the server wallet to submit the transaction on behalf of the user
+      const tx = await this.billPaymentContract.payBillWithTokensOnBehalf(
+        blockchainBillId,
+        sponsorAddress,
+        sponsorSignature
+      );
+      
+      const receipt = await tx.wait();
+      
+      // Find the blockchain request for this bill
+      const request = await prisma.blockchainRequest.findFirst({
+        where: { blockchainBillId }
+      });
+      
+      // Store this transaction in our database
+      // Find a wallet record for our service wallet
+      const serviceWallet = await prisma.cryptoWallet.findFirst({
+        where: { address: this.wallet.address }
+      });
+      
+      if (serviceWallet && request) {
+        await prisma.blockchainTransaction.create({
+          data: {
+            transactionHash: receipt.transactionHash,
+            from: this.wallet.address,
+            to: BLOCKCHAIN_CONFIG.BILL_PAYMENT_CONTRACT_ADDRESS,
+            amount: 0, // No ETH was sent
+            status: 'CONFIRMED',
+            cryptoWalletId: serviceWallet.id,
+            blockchainRequestId: request.id
+          }
+        });
+      }
+      
+      if (request) {
+        await prisma.blockchainRequest.update({
+          where: { id: request.id },
+          data: { status: 'CONFIRMED' }
+        });
+        
+        // Also update the bill status if we have a reference
+        if (request.billId) {
+          await prisma.bill.update({
+            where: { id: request.billId },
+            data: { status: 'PAID' }
+          });
+        }
+        
+        // Credit U2K tokens as reward (this would normally happen in the smart contract)
+        // Here we're just updating our database record
+        const sponsorWallet = await prisma.cryptoWallet.findUnique({
+          where: { address: sponsorAddress }
+        });
+        
+        if (sponsorWallet) {
+          // Get the current reward amount from blockchain
+          const rewardAmount = await this.getTokenBalance(sponsorAddress);
+          await prisma.cryptoWallet.update({
+            where: { id: sponsorWallet.id },
+            data: { 
+              u2kBalance: parseFloat(rewardAmount)
+            }
+          });
+        }
+      }
+      
+      return receipt.transactionHash;
+    } catch (error) {
+      console.error('Error processing U2K token payment with signature:', error);
       throw error;
     }
   }
