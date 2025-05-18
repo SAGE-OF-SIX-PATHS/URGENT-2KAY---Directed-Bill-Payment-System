@@ -6,7 +6,7 @@
     "scripts": {
         "dev": "ts-node-dev src/index.ts",
         "generate": "npx prisma generate",
-        "start": "node dist/src/index.js || node index.js",
+        "start": "node dist/src/index.ts || node index.ts",
         "seed:provider": "ts-node scripts/seed-provider.ts",
         "prisma:generate": "prisma generate",
         "build": "tsc -p . && echo 'Checking build output:' && ls -la dist/"
