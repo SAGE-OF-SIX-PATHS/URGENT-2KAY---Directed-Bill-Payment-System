@@ -24,7 +24,6 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   sponsoredBills Bill[]    @relation("BillSponsors")
-  sponsoredBills Bill[]    @relation("BillSponsors")
 }
 
 enum Role {
@@ -66,7 +65,6 @@ model Bill {
   sponsors      User[]        @relation("BillSponsors")
   transactions  Transaction[]
   blockchainRequest BlockchainRequest?
-  blockchainRequest BlockchainRequest?
   
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -78,18 +76,17 @@ enum Priority {
   HIGH
 }
 
-export enum BillStatus {
-  PENDING = 'PENDING',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED',
-  PAID = 'PAID',
-  FAILED = 'FAILED'
+enum BillStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+  FAILED
 }
 
 model Transaction {
   id        String   @id @default(uuid())
   amount    Float
-  status    String   @default("PENDING")
   status    String   @default("PENDING")
   billId    String
   reference String   @unique
@@ -121,10 +118,7 @@ model Request {
 
   status   RequestStatus @default(PENDING)
   feedback String?
-  status   RequestStatus @default(PENDING)
-  feedback String?
 
-  publicLinkId String @unique @default(uuid())
   publicLinkId String @unique @default(uuid())
 
   requesterId String
@@ -145,8 +139,6 @@ model Payment {
   reference String   @unique
   status    String   @default("pending")
   splitCode String?
-  status    String   @default("pending")
-  splitCode String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -161,47 +153,13 @@ model AirtimeTransaction {
 }
 
 model Subaccount {
-  id               String   @id @default(uuid())
-  businessName     String
-  bankCode         String
-  accountNumber    String
-  percentageCharge Float
-  subaccountCode   String   @unique
-  createdAt        DateTime @default(now())
-  lastPaidAt       DateTime?
-  subaccountSplits SubaccountSplit[]
-}
-
-model SubaccountSplit {
-  id           String @id @default(uuid())
-  subaccountId String
-  splitGroupId String
-  share        Float
-
-  subaccount Subaccount @relation(fields: [subaccountId], references: [id])
-  splitGroup SplitGroup @relation(fields: [splitGroupId], references: [id])
-}
-
-model SplitGroup {
   id               String            @id @default(uuid())
-  name             String
-  type             String
-  currency         String
-  splitCode        String            @unique
-  bearerType       String?
-  bearerSubaccount String
-  subaccounts      SubaccountSplit[]
-  createdAt        DateTime          @default(now())
-}
-
-model Subaccount {
-  id               String   @id @default(uuid())
   businessName     String
   bankCode         String
   accountNumber    String
   percentageCharge Float
-  subaccountCode   String   @unique
-  createdAt        DateTime @default(now())
+  subaccountCode   String            @unique
+  createdAt        DateTime          @default(now())
   lastPaidAt       DateTime?
   subaccountSplits SubaccountSplit[]
 }
@@ -238,10 +196,7 @@ model Transfer {
   amount         Float
   reason         String
   reference      String?
-  reference      String?
   status         String
-  batchId        String?
-  batch          Batch?   @relation(fields: [batchId], references: [id])
   batchId        String?
   batch          Batch?   @relation(fields: [batchId], references: [id])
   createdAt      DateTime @default(now())
@@ -269,66 +224,55 @@ model BulkTransfer {
 }
 
 model Recipient {
-  id            String @id @default(uuid())
+  id            String   @id @default(uuid())
   name          String
   accountNumber String
   bankCode      String
-  recipientCode String @unique
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// Blockchain models
-model Recipient {
-  id            String @id @default(uuid())
-  name          String
-  accountNumber String
-  bankCode      String
-  recipientCode String @unique
+  recipientCode String   @unique
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
 
 // Blockchain models
 model CryptoWallet {
-  id            String     @id @default(uuid())
-  address       String     @unique
-  userId        String     @unique
-  u2kBalance    Float      @default(0)
-  user          User       @relation(fields: [userId], references: [id])
+  id            String                 @id @default(uuid())
+  address       String                 @unique
+  userId        String                 @unique
+  u2kBalance    Float                  @default(0)
+  user          User                   @relation(fields: [userId], references: [id])
   transactions  BlockchainTransaction[]
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
 }
 
 model BlockchainRequest {
-  id               String   @id @default(uuid())
-  billId           String   @unique
-  bill             Bill     @relation(fields: [billId], references: [id])
+  id               String              @id @default(uuid())
+  billId           String              @unique
+  bill             Bill                @relation(fields: [billId], references: [id])
   blockchainBillId String?
-  transactionHash  String?  @unique
-  status           BlockchainTxStatus @default(PENDING)
+  transactionHash  String?             @unique
+  status           BlockchainTxStatus  @default(PENDING)
   amount           Float
   cryptoAmount     Float
-  paymentType      PaymentType @default(NATIVE)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  paymentType      PaymentType         @default(NATIVE)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
   transactions     BlockchainTransaction[]
 }
 
 model BlockchainTransaction {
-  id                String    @id @default(uuid())
-  transactionHash   String    @unique
-  from              String
-  to                String
-  amount            Float
-  status            BlockchainTxStatus
-  cryptoWalletId    String
-  cryptoWallet      CryptoWallet @relation(fields: [cryptoWalletId], references: [id])
+  id                 String             @id @default(uuid())
+  transactionHash    String             @unique
+  from               String
+  to                 String
+  amount             Float
+  status             BlockchainTxStatus
+  cryptoWalletId     String
+  cryptoWallet       CryptoWallet       @relation(fields: [cryptoWalletId], references: [id])
   blockchainRequestId String?
-  blockchainRequest BlockchainRequest? @relation(fields: [blockchainRequestId], references: [id])
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  blockchainRequest  BlockchainRequest? @relation(fields: [blockchainRequestId], references: [id])
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 }
 
 enum BlockchainTxStatus {
