@@ -1,4 +1,10 @@
-import { RequestUser } from '../types';
+export interface RequestUser {
+  id: string;
+  email: string;
+  name?: string;
+  role?: string;
+  // Add any other properties that are relevant to your authenticated user
+}
 
 /**
  * Helper function to safely get the user from request

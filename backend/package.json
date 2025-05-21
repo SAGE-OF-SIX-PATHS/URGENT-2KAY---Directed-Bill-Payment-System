@@ -5,9 +5,11 @@
     "main": "index.js",
     "scripts": {
         "dev": "ts-node-dev src/index.ts",
-        "build": "tsc && prisma generate",
-        "start": "node dist/index.js",
-        "seed:provider": "ts-node scripts/seed-provider.ts"
+        "generate": "npx prisma generate",
+        "start": "node dist/index.js || node index.js",
+        "seed:provider": "ts-node scripts/seed-provider.ts",
+        "prisma:generate": "prisma generate",
+        "build": "tsc -p . && echo 'Checking build output:' && ls -la dist/"
     },
     "keywords": [],
     "author": "",
