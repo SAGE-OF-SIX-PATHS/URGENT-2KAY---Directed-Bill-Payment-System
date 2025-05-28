@@ -384,7 +384,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "C:\\Users\\Admin\\Desktop\\URGENT-2KAY---Directed-Bill-Payment-System\\backend\\src\\generated\\prisma-client",
+      "value": "C:\\Users\\Sage of Six Paths\\Music\\URGENT-2KAY---Directed-Bill-Payment-System\\backend\\src\\generated\\prisma-client",
       "fromEnvVar": null
     },
     "config": {
@@ -398,7 +398,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "C:\\Users\\Admin\\Desktop\\URGENT-2KAY---Directed-Bill-Payment-System\\backend\\prisma\\schema.prisma",
+    "sourceFilePath": "C:\\Users\\Sage of Six Paths\\Music\\URGENT-2KAY---Directed-Bill-Payment-System\\backend\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {

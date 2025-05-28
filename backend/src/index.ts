@@ -77,7 +77,7 @@ app.use("/api/sponsorships", sponsorshipRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api", providerRoutes);
 app.use("/api/users", userRoutes);
-app.use('/api/email', emailRouter);
+app.use('/api', emailRouter);
 app.use("/transaction", paystackRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api", recipientRoutes);
