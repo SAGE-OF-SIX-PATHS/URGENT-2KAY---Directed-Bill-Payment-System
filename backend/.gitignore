@@ -7,6 +7,8 @@
 
 scripts/
 
+prisma/seed.ts
+
 # Dependencies
 node_modules/
 /.pnp

@@ -8,6 +8,8 @@ export const findOrCreateUser = async (profile: any, role: string) => {
   let user = await prisma.user.findUnique({ where: { email } });
 
   if (!user) {
+    console.log("Creating new user with role:", role);
+
     user = await prisma.user.create({
       data: {
         email,

@@ -14,10 +14,27 @@ passport.use(
       let role = "BENEFACTEE"; // default
 
       try {
-        if (req.query.state) {
+        /* if (req.query.state) {
           console.log("this is the main role", req.query.state)
           const state = JSON.parse(decodeURIComponent(req.query.state));
           if (state.role) role = state.role;
+        } */
+        if (req.query.state) {
+          try {
+            const stateRaw = decodeURIComponent(req.query.state);
+            let parsedState: any;
+
+            try {
+              parsedState = JSON.parse(stateRaw);
+            } catch {
+              // fallback in case someone passed just "BENEFACTOR" or "BENEFACTEE"
+              parsedState = { role: stateRaw };
+            }
+
+            if (parsedState?.role) role = parsedState.role.toUpperCase();
+          } catch (err) {
+            console.error("Failed to parse state param:", err);
+          }
         }
       } catch (error) {
         console.error("Failed to parse state param:", error);
